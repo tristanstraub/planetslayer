@@ -1,8 +1,6 @@
 (ns planetslayer.scene
   (:require [planetslayer.universe :refer [material-color]]))
 
-(declare add-sphere)
-
 (defn vec->threejs [v]
   (js/THREE.Vector3. (v 0) (v 1) (v 2)))
 
@@ -15,9 +13,9 @@
 (defn mesh-move-to [mesh pos]
   (.. mesh -position (set (pos 0) (pos 1) (pos 2))))
 
-(defn add-sphere [scene & {:keys [pos color]}]
+(defn add-sphere [scene & {:keys [pos color radius]}]
   (let [mat    (js/THREE.MeshPhongMaterial. #js {:color (or color 0xff0000)})
-        geo    (js/THREE.SphereGeometry. 1 20 20)
+        geo    (js/THREE.SphereGeometry. radius 20 20)
         mesh   (js/THREE.Mesh. geo mat)]
 
     (mesh-move-to mesh pos)
@@ -39,7 +37,10 @@
         mesh-index             (reduce (fn [mesh-index planet]
                                          (assoc mesh-index
                                                 (:id planet)
-                                                (add-sphere scene :pos (:pos planet) :color (material-color (:material planet)))))
+                                                (add-sphere scene
+                                                            :pos (:pos planet)
+                                                            :color (material-color (:material planet))
+                                                            :radius (or (:radius planet) 1))))
                                        {}
                                        (:objects universe))]
 
