@@ -1,7 +1,7 @@
 (ns planetslayer.renderer
   (:require [rum.core :as r]
             [planetslayer.anim :refer [request-animation-frame]]
-            [planetslayer.scene :refer [make-scene]]))
+            [planetslayer.scene :refer [make-scene object-move-to!]]))
 
 (defn init-threejs! []
   (defonce *webgl* (js/THREE.WebGLRenderer.))
@@ -27,18 +27,22 @@
     (resize-webgl! webgl)
     (render!)))
 
-(defn updater [{:keys [scene camera]}]
+(defn updater [!universe {:keys [scene camera mesh-index]}]
   (fn [time]
-))
+    (doseq [object (:objects @!universe)]
+      (when-let [pos (:at object)]
+        (object-move-to! mesh-index object pos)))))
 
 (def threejs
   {:did-mount (fn [state]
                 (let [{:keys [universe]} (:rum/args state)
+                      !universe          (atom universe)
+                      ;;;---
                       webgl              (init-threejs!)
                       scene              (make-scene (get-window-size) universe)
                       render!            #(.render webgl (:scene scene) (:camera scene))
                       resize!            (resizer webgl (:camera scene) render!)
-                      update!            (updater scene)]
+                      update!            (updater !universe scene)]
 
                   ;; TODO not the correct dom element
                   (.. js/document -body (appendChild (.-domElement webgl)))
@@ -49,10 +53,15 @@
                   (let [stop! (request-animation-frame (fn [time]
                                                          (update! time)
                                                          (render!)))]
-                    (assoc state ::resize resize! ::stop! stop!))))
+                    (assoc state ::resize resize! ::stop! stop! ::!universe !universe))))
+
+   :did-update (fn [state]
+                 (let [{:keys [universe]} (:rum/args state)]
+                   (reset! (::!universe state) universe)
+                   state))
 
    :transfer-state (fn [o n]
-                     (assoc n ::resize (::resize o) ::stop! (::stop! o)))
+                     (assoc n ::resize (::resize o) ::stop! (::stop! o) ::!universe (::!universe o)))
 
    :will-unmount (fn [state]
                    (.. js/window (removeEventListener "resize" (::resize state)))

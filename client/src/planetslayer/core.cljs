@@ -25,8 +25,8 @@
 (defonce app (atom {}))
 
 (defn get-time [app]
-  (let [{:keys [previous-timestamp timestamp]} app]
-     (- timestamp previous-timestamp)))
+  (let [{:keys [start-timestamp timestamp]} app]
+     (- timestamp start-timestamp)))
 
 (defn get-fps [app]
   (let [{:keys [start-timestamp previous-timestamp timestamp]} app
@@ -43,8 +43,10 @@
     (up object (get-time app))
     object))
 
-(defn- update-universe [app]
-  (update-in app [:universe :objects] #(mapv (partial update-object app) %)))
+(defn update-universe [app]
+  (update-in app [:universe :objects]
+             (fn [objects]
+               (mapv (partial update-object app) objects))))
 
 (defn timed-app-update [timestamp]
   (swap! app (fn [app]
@@ -58,7 +60,7 @@
 
 (defn main []
   (defonce timer
-    (request-animation-frame timed-app-update))
+    (request-animation-frame #'timed-app-update))
 
   (swap! app assoc :version "0.0.1" :universe (make-universe))
   (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
