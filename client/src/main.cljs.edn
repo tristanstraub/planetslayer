@@ -1,0 +1,2 @@
+{:init-fns [planetslayer.core/main]
+ :require [planetslayer.core]}
