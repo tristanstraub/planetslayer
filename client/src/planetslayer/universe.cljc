@@ -31,6 +31,6 @@
                       :material (material :image "images/burning-planet.jpg")
                       :update (fn [p time]
                                 (assoc p
-                                       :at [(* 3 (Math/sin (/ time 1000)))
+                                       :at [(* 3 (Math/sin (/ time 10000)))
                                             0
-                                            (* 3 (Math/cos (/ time 1000)))])))]})
+                                            (* 3 (Math/cos (/ time 10000)))])))]})
