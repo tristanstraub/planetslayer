@@ -16,7 +16,7 @@
   (let [app @app]
     [:div
      (header app)
-     ;;(renderer-component)
+     (renderer-component)
      (footer app)]))
 
 ;; App state -- globals? oh well...
