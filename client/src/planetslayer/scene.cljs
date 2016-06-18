@@ -10,8 +10,11 @@
 (defn add-light [scene light]
   (.add scene light))
 
-(defn mesh-move-to [mesh pos]
+(defn mesh-move-to! [mesh pos]
   (.. mesh -position (set (pos 0) (pos 1) (pos 2))))
+
+(defn mesh-rotate-to! [mesh pos]
+  (.. mesh -rotation (set (pos 0) (pos 1) (pos 2))))
 
 (defn add-sphere [scene & {:keys [pos color radius texture]}]
   (let [mat    (js/THREE.MeshPhongMaterial. #js {:color (or color 0xff0000)
@@ -19,14 +22,17 @@
         geo    (js/THREE.SphereGeometry. radius 20 20)
         mesh   (js/THREE.Mesh. geo mat)]
 
-    (mesh-move-to mesh pos)
+    (mesh-move-to! mesh pos)
 
     (.add scene mesh)
 
     mesh))
 
 (defn object-move-to! [mesh-index object pos]
-  (mesh-move-to (get mesh-index (:id object)) pos))
+  (mesh-move-to! (get mesh-index (:id object)) pos))
+
+(defn object-rotate-to! [mesh-index object pos]
+  (mesh-rotate-to! (get mesh-index (:id object)) pos))
 
 (defn make-scene [window universe]
   (let [{:keys [width height]} window
@@ -38,8 +44,7 @@
         ;;-- textures
         mgr                    (js/THREE.LoadingManager.)
         imgloader              (js/THREE.ImageLoader. mgr)
-        texture                (js/THREE.Texture.)
-        mat                    (js/THREE.MeshPhongMaterial. #js {:color 0x555555})
+
 
         mesh-index             (reduce (fn [mesh-index planet]
                                          (assoc mesh-index
@@ -48,21 +53,22 @@
                                                             :pos (:pos planet)
                                                             :color (material-color (:material planet))
                                                             :radius (or (:radius planet) 1)
-                                                            :texture texture)))
+                                                            :texture (js/THREE.Texture.))))
                                        {}
                                        (:objects universe))]
 
     (doseq [object (:objects universe)]
-      (when-let [image (material-image (:material object))]
-        (.load imgloader image
-               (fn [image]
-                 (set! (.. texture -image) image)
-                 (set! (.. texture -needsUpdate) true)
-                 (set! (.. mat -needsUpdate) true)))))
+      (let [mesh (get mesh-index (:id object))
+            texture (.. mesh -material -map)]
+        (when-let [image (material-image (:material object))]
+          (.load imgloader image
+                 (fn [image]
+                   (set! (.. texture -image) image)
+                   (set! (.. texture -needsUpdate) true))))))
 
-    (mesh-move-to camera [0 0 10])
+    (mesh-move-to! camera [0 0 10])
     (camera-look-at camera [0 0 0])
-    (mesh-move-to dlight [-0.5 0 1])
+    (mesh-move-to! dlight [-0.5 0 1])
 
     (add-light scene light)
     (add-light scene dlight)

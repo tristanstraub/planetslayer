@@ -21,11 +21,16 @@
 
 (defn make-universe []
   {:objects [(planet! :at [0 0 0]
-                      :radius 1)
+                      :radius 1
+                      :material (material :image "images/sun.jpg"
+                                          :color 0xaaaaaa)
+                      :update (fn [p time]
+                                (assoc p :rotation [0 (/ time -8000) 0])))
              (planet! :at [3 0 -5]
                       :radius 0.5
                       :material (material :image "images/burning-planet.jpg")
                       :update (fn [p time]
-                                (assoc p :at [(* 3 (Math/sin (/ time 1000)))
-                                              0
-                                              (* 3 (Math/cos (/ time 1000)))])))]})
+                                (assoc p
+                                       :at [(* 3 (Math/sin (/ time 1000)))
+                                            0
+                                            (* 3 (Math/cos (/ time 1000)))])))]})
