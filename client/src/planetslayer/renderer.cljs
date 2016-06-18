@@ -1,5 +1,6 @@
 (ns planetslayer.renderer
-  (:require [rum.core :as r]))
+  (:require [rum.core :as r]
+            [planetslayer.scene :refer [make-scene]]))
 
 (defn init-threejs! []
   (defonce *webgl* (js/THREE.WebGLRenderer.))
@@ -26,11 +27,14 @@
 (def threejs
   {:did-mount (fn [state]
                 (let [webgl   (init-threejs!)
-                      resize! (resizer webgl)]
+                      resize! (resizer webgl)
+                      scene   (make-scene (get-window-size))]
+
                   (.. js/document -body (appendChild (.-domElement webgl)))
                   (.. js/window (addEventListener "resize" resize! false))
 
                   (resize!)
+                  (.render webgl (:scene scene) (:camera scene))
 
                   (assoc state ::resize resize!)))
 
