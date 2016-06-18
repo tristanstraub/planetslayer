@@ -6,9 +6,11 @@
     color: #fff;
     border-top: 1px solid #000;
     text-align: right;
+    padding-right: 10px;
 }
 
 .header {
+    padding-left: 10px;
     width: 100%;
     background: #777;
     color: #fff;
