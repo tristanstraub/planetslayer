@@ -1,0 +1,5 @@
+* Planet SLayer!
+
+* Distances/Coordinates
+
+** TODO define universe coordinate/distances
