@@ -37,12 +37,13 @@
   {:did-mount (fn [state]
                 (let [{:keys [universe]} (:rum/args state)
                       !universe          (atom universe)
-                      ;;;---
+;;;---
                       webgl              (init-threejs!)
                       scene              (make-scene (get-window-size) universe)
                       render!            #(.render webgl (:scene scene) (:camera scene))
                       resize!            (resizer webgl (:camera scene) render!)
-                      update!            (updater !universe scene)]
+                      update!            (updater !universe scene)
+                      ]
 
                   ;; TODO not the correct dom element
                   (.. js/document -body (appendChild (.-domElement webgl)))

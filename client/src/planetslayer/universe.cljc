@@ -9,18 +9,22 @@
    :update   update
    :radius   radius})
 
-(defn material [& {:keys [color]}]
-  {:color color})
+(defn material [& {:keys [color image]}]
+  {:color color
+   :image image})
 
 (defn material-color [m]
   (:color m))
+
+(defn material-image [m]
+  (:image m))
 
 (defn make-universe []
   {:objects [(planet! :at [0 0 0]
                       :radius 1)
              (planet! :at [3 0 -5]
                       :radius 0.5
-                      :material (material :color 0x0000ff)
+                      :material (material :image "images/burning-planet.jpg")
                       :update (fn [p time]
                                 (assoc p :at [(* 3 (Math/sin (/ time 1000)))
                                               0
