@@ -1,5 +1,5 @@
 (ns planetslayer.scene
-  (:require [planetslayer.universe :refer [material-color material-image]]))
+  (:require [planetslayer.universe :refer [material-color material-image planets]]))
 
 (defn vec->threejs [v]
   (js/THREE.Vector3. (v 0) (v 1) (v 2)))
@@ -41,8 +41,14 @@
         light                  (js/THREE.AmbientLight. 0x999999)
         dlight                 (js/THREE.DirectionalLight. 0xbbbbbb)
 
-        ;;-- textures
+        ;; -- assets
         mgr                    (js/THREE.LoadingManager.)
+
+        ;; -- models
+
+        stlloader              (js/THREE.STLLoader. mgr)
+
+        ;;-- textures
         imgloader              (js/THREE.ImageLoader. mgr)
 
 
@@ -55,9 +61,26 @@
                                                             :radius (or (:radius planet) 1)
                                                             :texture (js/THREE.Texture.))))
                                        {}
-                                       (:objects universe))]
+                                       (planets universe))]
 
-    (doseq [object (:objects universe)]
+    (.load stlloader "assets/ship.stl"
+           (fn [geo]
+             (.computeFaceNormals geo)
+             (.computeVertexNormals geo)
+             (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0x000077})
+                   mesh (js/THREE.Mesh. geo mat)]
+               (.add scene mesh)
+               (mesh-move-to! mesh [-7 1 -20])
+               (mesh-rotate-to! mesh [1 0 0])
+
+               ;; (.. object (traverse (fn [child]
+               ;;                        (when (= (type child) js/THREE.Mesh)
+               ;;                          (set! (.. child -material) mat)))))
+)
+             ))
+
+    ;; load and attach mesh texture images
+    (doseq [object (planets universe)]
       (let [mesh (get mesh-index (:id object))
             texture (.. mesh -material -map)]
         (when-let [image (material-image (:material object))]

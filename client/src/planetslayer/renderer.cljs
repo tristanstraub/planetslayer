@@ -39,7 +39,7 @@
   {:did-mount (fn [state]
                 (let [{:keys [universe]} (:rum/args state)
                       !universe          (atom universe)
-;;;---
+                      ;;---
                       webgl              (init-threejs!)
                       scene              (make-scene (get-window-size) universe)
                       render!            #(.render webgl (:scene scene) (:camera scene))
