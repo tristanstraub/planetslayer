@@ -1,7 +1,8 @@
 (ns planetslayer.core
   (:require [rum.core :as r]
             [goog.dom :as dom]
-            [planetslayer.renderer :refer [renderer-component]]))
+            [planetslayer.renderer :refer [renderer-component]]
+            [planetslayer.universe :refer [make-universe]]))
 
 (enable-console-print!)
 
@@ -16,7 +17,7 @@
   (let [app @app]
     [:div
      (header app)
-     (renderer-component)
+     (renderer-component :universe (:universe app))
      (footer app)]))
 
 ;; App state -- globals? oh well...
@@ -48,7 +49,7 @@
   (request-animation-frame timer-update))
 
 (defn main []
-  (swap! app assoc :version "0.0.1")
+  (swap! app assoc :version "0.0.1" :universe (make-universe))
   (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
     (add-watch app :state-change (fn [k r o n]
                                    (when-not (= o n)

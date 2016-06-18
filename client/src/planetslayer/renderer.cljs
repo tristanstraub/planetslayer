@@ -20,21 +20,27 @@
   (let [{:keys [width height]} (get-window-size)]
     (.setSize webgl width height)))
 
-(defn resizer [webgl]
+(defn resizer [webgl camera render!]
   (fn []
-    (resize-webgl! webgl)))
+    (resize-camera! camera)
+    (resize-webgl! webgl)
+    (render!)))
 
 (def threejs
   {:did-mount (fn [state]
-                (let [webgl   (init-threejs!)
-                      resize! (resizer webgl)
-                      scene   (make-scene (get-window-size))]
+                (let [{:keys [universe]} (:rum/args state)
+                      webgl              (init-threejs!)
+                      scene              (make-scene (get-window-size) universe)
+                      render!            #(.render webgl (:scene scene) (:camera scene))
+                      resize!            (resizer webgl (:camera scene) render!)
+                      ]
 
+                  ;; TODO not the correct dom element
                   (.. js/document -body (appendChild (.-domElement webgl)))
                   (.. js/window (addEventListener "resize" resize! false))
 
                   (resize!)
-                  (.render webgl (:scene scene) (:camera scene))
+                  (render!)
 
                   (assoc state ::resize resize!)))
 
@@ -45,5 +51,5 @@
                    (.. js/window (removeEventListener "resize" (::resize state)))
                    state)})
 
-(r/defc renderer-component < threejs []
+(r/defc renderer-component < threejs [& {:keys [universe]}]
   [:div])
