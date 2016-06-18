@@ -1,5 +1,6 @@
 (ns planetslayer.renderer
   (:require [rum.core :as r]
+            [planetslayer.anim :refer [request-animation-frame]]
             [planetslayer.scene :refer [make-scene]]))
 
 (defn init-threejs! []
@@ -26,6 +27,10 @@
     (resize-webgl! webgl)
     (render!)))
 
+(defn updater [{:keys [scene camera]}]
+  (fn [time]
+))
+
 (def threejs
   {:did-mount (fn [state]
                 (let [{:keys [universe]} (:rum/args state)
@@ -33,22 +38,25 @@
                       scene              (make-scene (get-window-size) universe)
                       render!            #(.render webgl (:scene scene) (:camera scene))
                       resize!            (resizer webgl (:camera scene) render!)
-                      ]
+                      update!            (updater scene)]
 
                   ;; TODO not the correct dom element
                   (.. js/document -body (appendChild (.-domElement webgl)))
                   (.. js/window (addEventListener "resize" resize! false))
 
                   (resize!)
-                  (render!)
 
-                  (assoc state ::resize resize!)))
+                  (let [stop! (request-animation-frame (fn [time]
+                                                         (update! time)
+                                                         (render!)))]
+                    (assoc state ::resize resize! ::stop! stop!))))
 
    :transfer-state (fn [o n]
-                     (assoc n ::resize (::resize o)))
+                     (assoc n ::resize (::resize o) ::stop! (::stop! o)))
 
    :will-unmount (fn [state]
                    (.. js/window (removeEventListener "resize" (::resize state)))
+                   ((::stop! state))
                    state)})
 
 (r/defc renderer-component < threejs [& {:keys [universe]}]
