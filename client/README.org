@@ -1,5 +1,9 @@
 * Planet SLayer!
 
+> boot client
+
+http://localhost:3000
+
 * Distances/Coordinates
 
 ** TODO define universe coordinate/distances
