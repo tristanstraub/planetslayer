@@ -4,7 +4,7 @@
   (defonce ids (atom 0))
   (swap! ids inc))
 
-(defn object! [type & {:keys [pos material update radius scale model rotate]}]
+(defn object! [type & {:keys [pos material update radius scale model rotate look-at]}]
   {:id       (id!)
    :type     type
    :pos      pos
@@ -13,7 +13,8 @@
    :radius   radius
    :scale    scale
    :rotate   rotate
-   :model    model})
+   :model    model
+   :look-at  look-at})
 
 (defn material [& {:keys [color image]}]
   {:color color
@@ -32,6 +33,9 @@
 (defn planet? [object]
   (= (:type object) :planet))
 
+(defn camera? [object]
+  (= (:type object) :camera))
+
 (defn objects [universe]
   (:objects universe))
 
@@ -42,7 +46,10 @@
   (mapv * (repeat s) b))
 
 (defn make-universe []
-  {:objects [(object! :ship
+  {:objects [(object! :camera
+                      :pos [0 0 10]
+                      :look-at [0 0 0])
+             (object! :ship
                       :pos [-2 -2 -1]
                       :model "assets/ship.stl"
                       :scale [0.2 0.2 0.2]

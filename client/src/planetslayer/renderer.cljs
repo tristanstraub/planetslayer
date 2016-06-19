@@ -1,7 +1,8 @@
 (ns planetslayer.renderer
   (:require [rum.core :as r]
             [planetslayer.anim :refer [request-animation-frame]]
-            [planetslayer.scene :refer [make-scene object-move-to! object-rotate-to!]]))
+            [planetslayer.scene :as s :refer [make-scene object-move-to! object-rotate-to!]]
+            [planetslayer.universe :as u]))
 
 (defn init-threejs! []
   (defonce *webgl* (js/THREE.WebGLRenderer.))
@@ -33,7 +34,15 @@
       (when-let [pos (:pos object)]
         (when (get mesh-index (:id object)) (object-move-to! mesh-index object pos)))
       (when-let [rot (:rotation object)]
-        (object-rotate-to! mesh-index object rot)))))
+        (object-rotate-to! mesh-index object rot))
+      (when (u/camera? object)
+        (println :move-cam object)
+        (when-let [pos (:pos object)]
+          (s/threejs-move-to! camera pos))
+
+        (when-let [look-at (:look-at object)]
+          (s/camera-look-at camera look-at))
+        ))))
 
 (def threejs
   {:did-mount (fn [state]
