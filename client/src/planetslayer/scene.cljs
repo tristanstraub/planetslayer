@@ -42,7 +42,7 @@
 (defn make-scene [window universe]
   (let [{:keys [width height]} window
         scene                  (js/THREE.Scene.)
-        camera                 (js/THREE.PerspectiveCamera. 45 (/ width height) 0.1 2000)
+        camera                 (js/THREE.PerspectiveCamera. 45 (/ width height) 0.1 1000)
         light                  (js/THREE.AmbientLight. 0x999999)
         dlight                 (js/THREE.DirectionalLight. 0xbbbbbb)
 
@@ -92,6 +92,7 @@
                                    (u/objects universe))]
             (reset! mesh-index new-mesh-index))
 
+          (a/close! resources)
           (a/close! unloaded-textures)
           (a/close! unloaded-models))
 
@@ -100,7 +101,6 @@
       (a/go (loop []
               (when-let [item (a/<! unloaded-textures)]
                 (let [[texture image] item]
-                  (println :image image)
                   (.load imgloader image
                          (fn [image]
                            (set! (.. texture -image) image)
@@ -110,19 +110,16 @@
 
       (a/go (loop []
               (when-let [item (a/<! unloaded-models)]
-                (println :model? item)
                 (let [[object model] item]
                   (.load stlloader model
                          (fn [geo]
-                           (println :loaded-model model)
                            (.computeFaceNormals geo)
                            (.computeVertexNormals geo)
-                           (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0x000077})
+                           (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0xffffff})
                                  mesh (js/THREE.Mesh. geo mat)]
                              (.add scene mesh)
 
                              (swap! mesh-index assoc (:id object) mesh)
-                             (println :model-id (:id object) @mesh-index)
 
                              (if-let [pos (:pos object)]
                                (threejs-move-to! mesh pos))
@@ -144,11 +141,9 @@
                 (recur))))
 
       (a/go
-        (doseq [_ (range 2)]
-          (a/<! done)
-          (a/<! resources))
-
-        (println :done?)
+        (loop []
+          (when (a/<! resources)
+            (a/<! done)))
 
         (threejs-move-to! camera [1 1 10])
         (camera-look-at camera [1 0 0])
@@ -157,9 +152,6 @@
         (add-light scene light)
         (add-light scene dlight)
 
-        (println :the-mesh-index @mesh-index)
-        (a/put! out {:scene scene :camera camera :mesh-index @mesh-index})
-
-        (println :ready!))
+        (a/put! out {:scene scene :camera camera :mesh-index @mesh-index}))
 
       out)))

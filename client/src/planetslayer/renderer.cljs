@@ -33,16 +33,17 @@
     (doseq [object (:objects @!universe)]
       (when-let [pos (:pos object)]
         (when (get mesh-index (:id object)) (object-move-to! mesh-index object pos)))
-      (when-let [rot (:rotation object)]
-        (object-rotate-to! mesh-index object rot))
+
+      (when-let [rot (:rotate object)]
+        (when (not= :camera (:type object))
+          (object-rotate-to! mesh-index object rot)))
+
       (when (u/camera? object)
-        (println :move-cam object)
         (when-let [pos (:pos object)]
           (s/threejs-move-to! camera pos))
 
         (when-let [look-at (:look-at object)]
-          (s/camera-look-at camera look-at))
-        ))))
+          (s/camera-look-at camera look-at))))))
 
 (def threejs
   {:did-mount (fn [state]

@@ -4,15 +4,16 @@
   (defonce ids (atom 0))
   (swap! ids inc))
 
-(defn object! [type & {:keys [pos material update radius scale model rotate look-at]}]
+(defn object! [type & {:keys [tag pos material update radius scale model rotate look-at]}]
   {:id       (id!)
    :type     type
+   :tag      tag
    :pos      pos
    :material material
    :update   update
    :radius   radius
    :scale    scale
-   :rotate   rotate
+   :rotate   (or rotate [0 0 0])
    :model    model
    :look-at  look-at})
 
@@ -48,15 +49,27 @@
 (defn make-universe []
   {:objects [(object! :camera
                       :pos [0 0 10]
-                      :look-at [0 0 0])
+                      :look-at [0 0 0]
+
+                      :update (fn [p time app time-delta]
+                                (let [player (first (filter (comp #(= % :player) :tag) (-> app :universe :objects)))]
+
+                                  (if player
+                                    (assoc p :pos (:pos player))
+                                    p)))
+                      )
              (object! :ship
-                      :pos [-2 -2 -1]
+                      :tag :player
+                      :pos [0 0 5]
                       :model "assets/ship.stl"
                       :scale [0.2 0.2 0.2]
-                      :rotate [(/ Math/PI 2) 0 0]
+                      :rotate [0 Math/PI Math/PI]
                       :update (fn [p time app time-delta]
                                 (let [time-delta (/ time-delta 2.0)]
                                   (cond-> p
+                                    ;; true
+                                    ;; (update :rotate #(v+ % [0 -0.1 0]))
+
                                     (get (:keys-state app) 65) ;; right - d
                                     (update :pos #(v+ % (v* time-delta [-0.01 0 0])))
 
@@ -67,7 +80,13 @@
                                     (update :pos #(v+ % (v* time-delta [0 0.01 0])))
 
                                     (get (:keys-state app) 83) ;; down - s
-                                    (update :pos #(v+ % (v* time-delta [0 -0.01 0]))))))
+                                    (update :pos #(v+ % (v* time-delta [0 -0.01 0])))
+
+                                    (get (:keys-state app) 69) ;; rot left - q
+                                    (update :rotate #(v+ % (v* time-delta [0 -0.01 0])))
+
+                                    (get (:keys-state app) 81) ;; rot right - e
+                                    (update :rotate #(v+ % (v* time-delta [0 0.01 0]))))))
                       )
              (object! :ship
                       :pos [2 -2 -1]
@@ -88,7 +107,7 @@
                       :material (material :image "images/sun.jpg"
                                           :color 0xaaaaaa)
                       :update (fn [p time app time-delta]
-                                (assoc p :rotation [0 (/ time -8000) 0])))
+                                (assoc p :rotate [0 (/ time -8000) 0])))
              (object! :planet :pos [3 0 -5]
                       :radius 0.5
                       :material (material :image "images/burning-planet.jpg")

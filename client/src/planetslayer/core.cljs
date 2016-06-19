@@ -76,11 +76,11 @@
      :key-down!
      (fn [e]
        (swap! !keys-state assoc (.-keyCode e) true)
-       (println :down (.-keyCode e)))
+)
      :key-up!
      (fn [e]
        (swap! !keys-state assoc (.-keyCode e) false)
-       (println :up (.-keyCode e)))}))
+)}))
 
 (defn main []
   (when-let [stop! (:stop! @app)]
@@ -118,7 +118,6 @@
                      :stop! #(do
                                (stop-universe-update!)
                                (stop!)
-                               (println :remove-resize)
                                (.. js/window (removeEventListener "keydown" key-down! false))
                                (.. js/window (removeEventListener "keyup" key-up! false))
                                (.. js/window (removeEventListener "resize" resize!))))))))
