@@ -17,9 +17,30 @@
 (r/defc footer [{:keys [version]}]
   [:div.footer "@www.allthethings.io"])
 
+(defn get-pressed [keystate]
+  {:q (get keystate 69)
+   :e (get keystate 81)
+   :s (get keystate 83)
+   :w (get keystate 87)
+   :a (get keystate 68)
+   :d (get keystate 65)})
+
+(r/defc controls [keystate]
+  (let [pressed (get-pressed keystate)]
+    [:div.controls
+     [:div.row
+      [:div.col-xs-4 [:span.label (if (:q pressed) {:class "label-primary"}) "Q"]]
+      [:div.col-xs-4 [:span.label (if (:w pressed) {:class "label-primary"}) "W"]]
+      [:div.col-xs-4 [:span.label (if (:e pressed) {:class "label-primary"}) "E"]]]
+     [:div.row
+      [:div.col-xs-4 [:span.label (if (:a pressed) {:class "label-primary"}) "A"]]
+      [:div.col-xs-4 [:span.label (if (:s pressed) {:class "label-primary"}) "S"]]
+      [:div.col-xs-4 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]]))
+
 (r/defc root [app]
   (let [app @app]
     [:div
+     (controls (:keystate app))
      (header app)
      (if (:webgl app)
        (renderer-component :webgl (:webgl app)))
@@ -120,9 +141,11 @@
                                (stop!)
                                (.. js/window (removeEventListener "keydown" key-down! false))
                                (.. js/window (removeEventListener "keyup" key-up! false))
-                               (.. js/window (removeEventListener "resize" resize!))))))))
+                               (.. js/window (removeEventListener "resize" resize!)))))))
 
-  (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
-    (add-watch app :state-change (fn [k r o n]
-                                   (when-not (= o n)
-                                     (r/request-render rcomponent))))))
+    (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
+      (add-watch !keys-state :keys-changes (fn [k r o n]
+                                             (swap! app assoc :keystate n)))
+      (add-watch app :state-change (fn [k r o n]
+                                     (when-not (= o n)
+                                       (r/request-render rcomponent)))))))
