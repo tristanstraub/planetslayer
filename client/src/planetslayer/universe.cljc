@@ -62,6 +62,20 @@
                                     (get (:keys-state app) 83) ;; down - s
                                     (update :pos #(v+ % (v* time-delta [0 -0.01 0]))))))
                       )
+             (object! :ship
+                      :pos [2 -2 -1]
+                      :model "assets/ship.stl"
+                      :scale [0.1 0.1 0.1]
+                      :rotate [0 0 Math/PI]
+                      :update (fn [p time app time-delta]
+                                (assoc p
+                                       :pos (v+ [(* 3 (Math/sin (/ time 10000)))
+                                                 0
+                                                 (* 3 (Math/cos (/ time 10000)))]
+                                                [(* 1 (Math/sin (/ time 10000)))
+                                                 0
+                                                 (* 1 (Math/cos (/ time 10000)))]
+                                                ))))
              (object! :planet :pos [0 0 0]
                       :radius 1
                       :material (material :image "images/sun.jpg"
