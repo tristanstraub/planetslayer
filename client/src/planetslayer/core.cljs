@@ -15,7 +15,7 @@
    [:span.pull-right "Frames " frames " FPS " (subs (str fps) 0 5)]])
 
 (r/defc footer [{:keys [version]}]
-  [:div.footer "@www.allthethings.io"])
+  [:div.footer [:.pull-left "github.com/tristanstraub/planetslayer"] "@www.allthethings.io"])
 
 (defn get-pressed [keystate]
   {:e (get keystate 69)
