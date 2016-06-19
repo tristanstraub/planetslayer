@@ -1,8 +1,11 @@
 (ns planetslayer.core
-  (:require [rum.core :as r]
+  (:require-macros [cljs.core.async.macros :as a])
+  (:require [cljs.core.async :as a]
+            [rum.core :as r]
             [goog.dom :as dom]
             [planetslayer.anim :refer [request-animation-frame]]
-            [planetslayer.renderer :refer [renderer-component]]
+            [planetslayer.scene :refer [make-scene]]
+            [planetslayer.renderer :refer [get-window-size renderer-component init-threejs! updater resizer]]
             [planetslayer.universe :refer [make-universe]]))
 
 (enable-console-print!)
@@ -18,7 +21,8 @@
   (let [app @app]
     [:div
      (header app)
-     (renderer-component :universe (:universe app))
+     (if (:webgl app)
+       (renderer-component :webgl (:webgl app)))
      (footer app)]))
 
 ;; App state -- globals? oh well...
@@ -59,10 +63,41 @@
                    (update-universe)))))
 
 (defn main []
+  (when-let [stop! (:stop! @app)]
+    (stop!))
+
   (defonce timer
     (request-animation-frame #'timed-app-update))
 
-  (swap! app assoc :version "0.0.1" :universe (make-universe))
+  (let [webgl      (init-threejs!)
+        universe   (make-universe)
+        ;;---
+        scene-chan (make-scene (get-window-size) universe)]
+
+    (a/go (let [scene     (a/<! scene-chan)
+                !universe (atom universe)
+                render!   #(.render webgl (:scene scene) (:camera scene))
+                resize!   (resizer webgl (:camera scene) render!)
+                update!   (updater !universe scene)]
+
+            (.. js/window (addEventListener "resize" resize! false))
+
+            (resize!)
+
+            (let [stop! (request-animation-frame (fn [time]
+                                                   (reset! !universe (:universe @app))
+                                                   (update! time)
+                                                   (render!)))]
+
+              (swap! app assoc
+                     :version "0.0.1"
+                     :universe universe
+                     :webgl webgl
+                     :stop! #(do
+                               (stop!)
+                               (println :remove-resize)
+                               (.. js/window (removeEventListener "resize" resize!))))))))
+
   (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
     (add-watch app :state-change (fn [k r o n]
                                    (when-not (= o n)

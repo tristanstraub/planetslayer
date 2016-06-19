@@ -37,39 +37,11 @@
 
 (def threejs
   {:did-mount (fn [state]
-                (let [{:keys [universe]} (:rum/args state)
-                      !universe          (atom universe)
-                      ;;---
-                      webgl              (init-threejs!)
-                      scene              (make-scene (get-window-size) universe)
-                      render!            #(.render webgl (:scene scene) (:camera scene))
-                      resize!            (resizer webgl (:camera scene) render!)
-                      update!            (updater !universe scene)
-                      ]
+                (let [c                        (:rum/react-component state)
+                      el                       (js/ReactDOM.findDOMNode c)
+                      {:keys [webgl]} (:rum/args state)]
+                  (.. el (appendChild (.-domElement webgl))))
+                state)})
 
-                  ;; TODO not the correct dom element
-                  (.. js/document -body (appendChild (.-domElement webgl)))
-                  (.. js/window (addEventListener "resize" resize! false))
-
-                  (resize!)
-
-                  (let [stop! (request-animation-frame (fn [time]
-                                                         (update! time)
-                                                         (render!)))]
-                    (assoc state ::resize resize! ::stop! stop! ::!universe !universe))))
-
-   :did-update (fn [state]
-                 (let [{:keys [universe]} (:rum/args state)]
-                   (reset! (::!universe state) universe)
-                   state))
-
-   :transfer-state (fn [o n]
-                     (assoc n ::resize (::resize o) ::stop! (::stop! o) ::!universe (::!universe o)))
-
-   :will-unmount (fn [state]
-                   (.. js/window (removeEventListener "resize" (::resize state)))
-                   ((::stop! state))
-                   state)})
-
-(r/defc renderer-component < threejs [& {:keys [universe]}]
+(r/defc renderer-component < threejs [& {:keys [webgl]}]
   [:div])

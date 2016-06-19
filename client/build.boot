@@ -3,6 +3,7 @@
  :source-paths #{"src"}
  :resource-paths #{"resources"}
  :dependencies '[[org.clojure/clojure "1.8.0"]
+                 [org.clojure/core.async "0.2.385"]
                  [rum "0.9.0"]
                  [pandeiro/boot-http "0.7.3"]
                  [adzerk/boot-cljs "1.7.228-1"]

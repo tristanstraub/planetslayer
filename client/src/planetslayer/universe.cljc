@@ -4,13 +4,16 @@
   (defonce ids (atom 0))
   (swap! ids inc))
 
-(defn planet! [& {:keys [at material update radius]}]
+(defn object! [type & {:keys [at material update radius scale model rotate]}]
   {:id       (id!)
-   :type     :planet
+   :type     type
    :pos      at
    :material material
    :update   update
-   :radius   radius})
+   :radius   radius
+   :scale    scale
+   :rotate   rotate
+   :model    model})
 
 (defn material [& {:keys [color image]}]
   {:color color
@@ -26,23 +29,21 @@
   (->> u :objects
        (filter #(= :planet (:type %)))))
 
-(defn ship! [& {:keys [at material update radius]}]
-  {:id       (id!)
-   :type     :planet
-   :pos      at
-   :material material
-   :update   update
-   :radius   radius})
+(defn planet? [object]
+  (= (:type object) :planet))
+
+(defn objects [universe]
+  (:objects universe))
 
 (defn make-universe []
-  {:objects [(ship! :at [2 0 0])
-             (planet! :at [0 0 0]
-                         :radius 1
-                         :material (material :image "images/sun.jpg"
-                                             :color 0xaaaaaa)
-                         :update (fn [p time]
-                                   (assoc p :rotation [0 (/ time -8000) 0])))
-             (planet! :at [3 0 -5]
+  {:objects [(object! :ship :at [-2 -2 -1] :model "assets/ship.stl" :scale [0.2 0.2 0.2] :rotate [(/ Math/PI 2) 0 0])
+             (object! :planet :at [0 0 0]
+                      :radius 1
+                      :material (material :image "images/sun.jpg"
+                                          :color 0xaaaaaa)
+                      :update (fn [p time]
+                                (assoc p :rotation [0 (/ time -8000) 0])))
+             (object! :planet :at [3 0 -5]
                       :radius 0.5
                       :material (material :image "images/burning-planet.jpg")
                       :update (fn [p time]
