@@ -46,10 +46,17 @@
 (defn v* [s b]
   (mapv * (repeat s) b))
 
+(defn get-dir [player]
+  (let [rot        (:rotate player)]
+    [(Math/sin (rot 1)) 0 (Math/cos (rot 1))]))
+
 (defn look-through-player [camera player]
   ;;player-pos player-rotation player-right
-  (let [camera-pos (:pos camera)]
-    (assoc camera :look-at (v+ camera-pos [0 0 -1]))))
+  (let [look-at (get-dir player)]
+    (assoc camera :look-at (v+ (:pos player) look-at))))
+
+(defn get-player [app]
+  (first (filter (comp #(= % :player) :tag) (-> app :universe :objects))))
 
 (defn make-universe []
   {:objects [(object! :camera
@@ -57,7 +64,7 @@
                       :look-at [0 0 0]
 
                       :update (fn [p time app time-delta]
-                                (let [player (first (filter (comp #(= % :player) :tag) (-> app :universe :objects)))]
+                                (let [player (get-player app)]
                                   (cond-> p
                                     player
                                     (-> (assoc :pos (:pos player))
@@ -70,34 +77,37 @@
                       :scale [0.2 0.2 0.2]
                       :rotate [0 Math/PI Math/PI]
                       :update (fn [p time app time-delta]
-                                (let [time-delta (/ time-delta 2.0)]
+                                (let [time-delta (* 0.01 (/ time-delta 2.0))
+                                      player     (get-player app)
+                                      dir        (get-dir player)]
+
                                   (cond-> p
                                     ;; true
                                     ;; (update :rotate #(v+ % [0 -0.1 0]))
 
                                     (get (:keys-state app) 16) ;; shift
-                                    (update :pos #(v+ % (v* time-delta [0 0 -0.01])))
+                                    (update :pos #(v+ % (v* time-delta dir)))
 
                                     (get (:keys-state app) 17) ;; ctrl
-                                    (update :pos #(v+ % (v* time-delta [0 0 0.01])))
+                                    (update :pos #(v+ % (v* time-delta (v* -1 dir))))
 
                                     (get (:keys-state app) 65) ;; right - d
-                                    (update :pos #(v+ % (v* time-delta [-0.01 0 0])))
+                                    (update :pos #(v+ % (v* time-delta [-1 0 0])))
 
                                     (get (:keys-state app) 68) ;; left - a
-                                    (update :pos #(v+ % (v* time-delta [0.01 0 0])))
+                                    (update :pos #(v+ % (v* time-delta [1 0 0])))
 
                                     (get (:keys-state app) 87) ;; up - w
-                                    (update :pos #(v+ % (v* time-delta [0 0.01 0])))
+                                    (update :pos #(v+ % (v* time-delta [0 1 0])))
 
                                     (get (:keys-state app) 83) ;; down - s
-                                    (update :pos #(v+ % (v* time-delta [0 -0.01 0])))
+                                    (update :pos #(v+ % (v* time-delta [0 -1 0])))
 
                                     (get (:keys-state app) 69) ;; rot left - q
-                                    (update :rotate #(v+ % (v* time-delta [0 -0.01 0])))
+                                    (update :rotate #(v+ % (v* time-delta [0 -1 0])))
 
                                     (get (:keys-state app) 81) ;; rot right - e
-                                    (update :rotate #(v+ % (v* time-delta [0 0.01 0]))))))
+                                    (update :rotate #(v+ % (v* time-delta [0 1 0]))))))
                       )
              (object! :ship
                       :pos [2 -2 -1]
