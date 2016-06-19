@@ -46,6 +46,11 @@
 (defn v* [s b]
   (mapv * (repeat s) b))
 
+(defn look-through-player [camera player]
+  ;;player-pos player-rotation player-right
+  (let [camera-pos (:pos camera)]
+    (assoc camera :look-at (v+ camera-pos [0 0 -1]))))
+
 (defn make-universe []
   {:objects [(object! :camera
                       :pos [0 0 10]
@@ -53,11 +58,11 @@
 
                       :update (fn [p time app time-delta]
                                 (let [player (first (filter (comp #(= % :player) :tag) (-> app :universe :objects)))]
+                                  (cond-> p
+                                    player
+                                    (-> (assoc :pos (:pos player))
+                                        (look-through-player player))))))
 
-                                  (if player
-                                    (assoc p :pos (:pos player))
-                                    p)))
-                      )
              (object! :ship
                       :tag :player
                       :pos [0 0 5]
@@ -69,6 +74,12 @@
                                   (cond-> p
                                     ;; true
                                     ;; (update :rotate #(v+ % [0 -0.1 0]))
+
+                                    (get (:keys-state app) 16) ;; shift
+                                    (update :pos #(v+ % (v* time-delta [0 0 -0.01])))
+
+                                    (get (:keys-state app) 17) ;; ctrl
+                                    (update :pos #(v+ % (v* time-delta [0 0 0.01])))
 
                                     (get (:keys-state app) 65) ;; right - d
                                     (update :pos #(v+ % (v* time-delta [-0.01 0 0])))

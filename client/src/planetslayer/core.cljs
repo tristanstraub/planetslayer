@@ -18,24 +18,28 @@
   [:div.footer [:.pull-left "github.com/tristanstraub/planetslayer"] "@www.allthethings.io"])
 
 (defn get-pressed [keystate]
-  {:e (get keystate 69)
-   :q (get keystate 81)
-   :s (get keystate 83)
-   :w (get keystate 87)
-   :d (get keystate 68)
-   :a (get keystate 65)})
+  {:e     (get keystate 69)
+   :q     (get keystate 81)
+   :s     (get keystate 83)
+   :w     (get keystate 87)
+   :d     (get keystate 68)
+   :a     (get keystate 65)
+   :shift (get keystate 16)
+   :ctrl  (get keystate 17)})
 
 (r/defc controls [keystate]
   (let [pressed (get-pressed keystate)]
     [:div.controls
      [:div.row
-      [:div.col-xs-4 [:span.label (if (:q pressed) {:class "label-primary"}) "Q"]]
-      [:div.col-xs-4 [:span.label (if (:w pressed) {:class "label-primary"}) "W"]]
-      [:div.col-xs-4 [:span.label (if (:e pressed) {:class "label-primary"}) "E"]]]
+      [:div.col-xs-3 [:span.label (if (:shift pressed) {:class "label-primary"}) "SHIFT"]]
+      [:div.col-xs-3 [:span.label (if (:q pressed) {:class "label-primary"}) "Q"]]
+      [:div.col-xs-3 [:span.label (if (:w pressed) {:class "label-primary"}) "W"]]
+      [:div.col-xs-3 [:span.label (if (:e pressed) {:class "label-primary"}) "E"]]]
      [:div.row
-      [:div.col-xs-4 [:span.label (if (:a pressed) {:class "label-primary"}) "A"]]
-      [:div.col-xs-4 [:span.label (if (:s pressed) {:class "label-primary"}) "S"]]
-      [:div.col-xs-4 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]]))
+      [:div.col-xs-3 [:span.label (if (:ctrl pressed) {:class "label-primary"}) "CTRL"]]
+      [:div.col-xs-3 [:span.label (if (:a pressed) {:class "label-primary"}) "A"]]
+      [:div.col-xs-3 [:span.label (if (:s pressed) {:class "label-primary"}) "S"]]
+      [:div.col-xs-3 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]]))
 
 (r/defc root [app]
   (let [app @app]
@@ -92,16 +96,20 @@
 
 
 (defn key-listener []
-  (let [!keys-state (atom {})]
+  (let [!keys-state (atom {})
+        debug false]
     {:!keys-state !keys-state
      :key-down!
      (fn [e]
        (swap! !keys-state assoc (.-keyCode e) true)
-)
+       (when debug
+         (println (.-keyCode e) )))
      :key-up!
      (fn [e]
        (swap! !keys-state assoc (.-keyCode e) false)
-)}))
+       (when debug
+         (println (.-keyCode e) ))
+       )}))
 
 (defn main []
   (when-let [stop! (:stop! @app)]
