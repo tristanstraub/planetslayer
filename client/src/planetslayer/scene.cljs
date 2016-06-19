@@ -59,35 +59,41 @@
         unloaded-models        (a/chan)
         unloaded-textures      (a/chan)
 
-        mesh-index             (atom (reduce (fn [mesh-index object]
-                                               (let [texture (js/THREE.Texture.)
-                                                     image   (-> object :material :image)
-                                                     model   (-> object :model)]
+        mesh-index             (atom nil)
+        resources              (a/chan)]
 
-                                                 (when image
-                                                   (a/put! unloaded-textures [texture image]))
+    (a/go (let [new-mesh-index (reduce (fn [mesh-index object]
+                                     (let [texture (js/THREE.Texture.)
+                                           image   (-> object :material :image)
+                                           model   (-> object :model)]
 
-                                                 (cond (planet? object)
-                                                       (assoc mesh-index
-                                                              (:id object)
-                                                              (add-sphere scene
-                                                                          :pos (:pos object)
-                                                                          :color (material-color (:material object))
-                                                                          :radius (or (:radius object) 1)
-                                                                          :texture texture))
+                                       (when image
+                                         (a/put! resources true)
+                                         (a/put! unloaded-textures [texture image]))
 
-                                                       model
-                                                       (do
-                                                         (a/put! unloaded-models [object model])
-                                                         mesh-index)
+                                       (cond (planet? object)
+                                             (assoc mesh-index
+                                                    (:id object)
+                                                    (add-sphere scene
+                                                                :pos (:pos object)
+                                                                :color (material-color (:material object))
+                                                                :radius (or (:radius object) 1)
+                                                                :texture texture))
 
-                                                       :else
-                                                       mesh-index)))
-                                             {}
-                                             (u/objects universe)))]
+                                             model
+                                             (do
+                                               (a/put! resources true)
+                                               (a/put! unloaded-models [object model])
+                                               mesh-index)
 
-    (a/close! unloaded-textures)
-    (a/close! unloaded-models)
+                                             :else
+                                             mesh-index)))
+                                   {}
+                                   (u/objects universe))]
+            (reset! mesh-index new-mesh-index))
+
+          (a/close! unloaded-textures)
+          (a/close! unloaded-models))
 
     (let [done (a/chan)
           out  (a/chan)]
@@ -98,9 +104,9 @@
                   (.load imgloader image
                          (fn [image]
                            (set! (.. texture -image) image)
-                           (set! (.. texture -needsUpdate) true))))
-                (recur)))
-            (a/put! done true))
+                           (set! (.. texture -needsUpdate) true)
+                           (a/put! done true))))
+                (recur))))
 
       (a/go (loop []
               (when-let [item (a/<! unloaded-models)]
@@ -114,8 +120,9 @@
                            (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0x000077})
                                  mesh (js/THREE.Mesh. geo mat)]
                              (.add scene mesh)
-                             (swap! mesh-index assoc (:id object) mesh)
 
+                             (swap! mesh-index assoc (:id object) mesh)
+                             (println :model-id (:id object) @mesh-index)
 
                              (if-let [pos (:pos object)]
                                (mesh-move-to! mesh pos))
@@ -127,19 +134,21 @@
                              (if-let [scale (:scale object)]
                                (mesh-scale-to! mesh scale))
 
+                             (a/put! done true)
+
                              ;; (.. object (traverse (fn [child]
                              ;;                        (when (= (type child) js/THREE.Mesh)
                              ;;                          (set! (.. child -material) mat)))))
                              )
                            )))
-                (recur)))
-            (a/put! done true))
+                (recur))))
 
       (a/go
-        (println :wait)
         (doseq [_ (range 2)]
-          (a/<! done))
-        (println :ready)
+          (a/<! done)
+          (a/<! resources))
+
+        (println :done?)
 
         (mesh-move-to! camera [0 0 10])
         (camera-look-at camera [0 0 0])
@@ -148,6 +157,9 @@
         (add-light scene light)
         (add-light scene dlight)
 
-        (a/put! out {:scene scene :camera camera :mesh-index @mesh-index}))
+        (println :the-mesh-index @mesh-index)
+        (a/put! out {:scene scene :camera camera :mesh-index @mesh-index})
+
+        (println :ready!))
 
       out)))

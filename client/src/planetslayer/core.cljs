@@ -44,42 +44,58 @@
 
 (defn update-object [app object]
   (if-let [up (:update object)]
-    (up object (get-time app))
+    (up object (get-time app) app)
     object))
 
-(defn update-universe [app]
+(defn update-universe [app keys-state]
   (update-in app [:universe :objects]
              (fn [objects]
-               (mapv (partial update-object app) objects))))
+               (mapv (partial update-object (assoc app :keys-state keys-state)) objects))))
 
-(defn timed-app-update [timestamp]
-  (swap! app (fn [app]
-               (-> app
-                   (update :start-timestamp #(or % timestamp))
-                   (update :frames inc)
-                   (assoc :previous-timestamp (:timestamp app))
-                   (assoc :timestamp timestamp)
-                   (update-fps)
-                   (update-universe)))))
+(defn timed-app-updater [!app !keys-state]
+  (fn [timestamp]
+    (swap! !app (fn [app]
+                 (-> app
+                     (update :start-timestamp #(or % timestamp))
+                     (update :frames inc)
+                     (assoc :previous-timestamp (:timestamp app))
+                     (assoc :timestamp timestamp)
+                     (update-fps)
+                     (update-universe @!keys-state))))))
+
+
+(defn key-listener []
+  (let [!keys-state (atom {})]
+    {:!keys-state !keys-state
+     :key-down!
+     (fn [e]
+       (swap! !keys-state assoc (.-keyCode e) true)
+       (println :down (.-keyCode e)))
+     :key-up!
+     (fn [e]
+       (swap! !keys-state assoc (.-keyCode e) false)
+       (println :up (.-keyCode e)))}))
 
 (defn main []
   (when-let [stop! (:stop! @app)]
     (stop!))
 
-  (defonce timer
-    (request-animation-frame #'timed-app-update))
-
-  (let [webgl      (init-threejs!)
-        universe   (make-universe)
+  (let [{:keys [!keys-state key-down! key-up!]} (key-listener)
+        !app                                    app
+        stop-universe-update!                   (request-animation-frame (timed-app-updater !app !keys-state))
+        webgl                                   (init-threejs!)
+        universe                                (make-universe)
         ;;---
-        scene-chan (make-scene (get-window-size) universe)]
+        scene-chan                              (make-scene (get-window-size) universe)]
 
-    (a/go (let [scene     (a/<! scene-chan)
-                !universe (atom universe)
-                render!   #(.render webgl (:scene scene) (:camera scene))
-                resize!   (resizer webgl (:camera scene) render!)
-                update!   (updater !universe scene)]
+    (a/go (let [scene                       (a/<! scene-chan)
+                !universe                   (atom universe)
+                render!                     #(.render webgl (:scene scene) (:camera scene))
+                resize!                     (resizer webgl (:camera scene) render!)
+                update!                     (updater !universe scene)]
 
+            (.. js/window (addEventListener "keydown" key-down! false))
+            (.. js/window (addEventListener "keyup" key-up! false))
             (.. js/window (addEventListener "resize" resize! false))
 
             (resize!)
@@ -94,8 +110,11 @@
                      :universe universe
                      :webgl webgl
                      :stop! #(do
+                               (stop-universe-update!)
                                (stop!)
                                (println :remove-resize)
+                               (.. js/window (removeEventListener "keydown" key-down! false))
+                               (.. js/window (removeEventListener "keyup" key-up! false))
                                (.. js/window (removeEventListener "resize" resize!))))))))
 
   (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
