@@ -18,12 +18,12 @@
   [:div.footer "@www.allthethings.io"])
 
 (defn get-pressed [keystate]
-  {:q (get keystate 69)
-   :e (get keystate 81)
+  {:e (get keystate 69)
+   :q (get keystate 81)
    :s (get keystate 83)
    :w (get keystate 87)
-   :a (get keystate 68)
-   :d (get keystate 65)})
+   :d (get keystate 68)
+   :a (get keystate 65)})
 
 (r/defc controls [keystate]
   (let [pressed (get-pressed keystate)]

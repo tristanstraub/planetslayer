@@ -22,4 +22,7 @@
     border: 1px solid white;
     background: #777;
     color: #fff;
+    position: absolute;
+    top: 30px;
+    left: 10px;
 }
