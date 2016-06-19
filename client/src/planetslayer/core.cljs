@@ -30,7 +30,13 @@
 
 (defn get-time [app]
   (let [{:keys [start-timestamp timestamp]} app]
-     (- timestamp start-timestamp)))
+    (- timestamp start-timestamp)))
+
+(defn get-time-delta [app]
+  (let [{:keys [timestamp previous-timestamp]} app]
+    (if previous-timestamp
+      (- timestamp previous-timestamp)
+      (get-time app))))
 
 (defn get-fps [app]
   (let [{:keys [start-timestamp previous-timestamp timestamp]} app
@@ -44,7 +50,7 @@
 
 (defn update-object [app object]
   (if-let [up (:update object)]
-    (up object (get-time app) app)
+    (up object (get-time app) app (get-time-delta app))
     object))
 
 (defn update-universe [app keys-state]

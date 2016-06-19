@@ -38,28 +38,41 @@
 (defn v+ [a b]
   (mapv + a b))
 
+(defn v* [s b]
+  (mapv * (repeat s) b))
+
 (defn make-universe []
   {:objects [(object! :ship
                       :pos [-2 -2 -1]
                       :model "assets/ship.stl"
                       :scale [0.2 0.2 0.2]
                       :rotate [(/ Math/PI 2) 0 0]
-                      :update (fn [p time app]
-                                (cond (get (:keys-state app) 65)
-                                      (update p :pos #(v+ % [0.01 0 0]))
-                                      :else p))
+                      :update (fn [p time app time-delta]
+                                (let [time-delta (/ time-delta 2.0)]
+                                  (cond-> p
+                                    (get (:keys-state app) 65) ;; right - d
+                                    (update :pos #(v+ % (v* time-delta [-0.01 0 0])))
+
+                                    (get (:keys-state app) 68) ;; left - a
+                                    (update :pos #(v+ % (v* time-delta [0.01 0 0])))
+
+                                    (get (:keys-state app) 87) ;; up - w
+                                    (update :pos #(v+ % (v* time-delta [0 0.01 0])))
+
+                                    (get (:keys-state app) 83) ;; down - s
+                                    (update :pos #(v+ % (v* time-delta [0 -0.01 0]))))))
                       )
              (object! :planet :pos [0 0 0]
                       :radius 1
                       :material (material :image "images/sun.jpg"
                                           :color 0xaaaaaa)
-                      :update (fn [p time app]
+                      :update (fn [p time app time-delta]
                                 (assoc p :rotation [0 (/ time -8000) 0])))
              (object! :planet :pos [3 0 -5]
                       :radius 0.5
                       :material (material :image "images/burning-planet.jpg")
-                      :update (fn [p time app]
+                      :update (fn [p time app time-delta]
                                 (assoc p
                                        :pos [(* 3 (Math/sin (/ time 10000)))
-                                            0
-                                            (* 3 (Math/cos (/ time 10000)))])))]})
+                                             0
+                                             (* 3 (Math/cos (/ time 10000)))])))]})

@@ -31,9 +31,6 @@
   (fn [time]
     (doseq [object (:objects @!universe)]
       (when-let [pos (:pos object)]
-        ;; (println pos)
-        ;; (when (= (:type object) :ship)
-        ;;   (println :move-to pos))
         (when (get mesh-index (:id object)) (object-move-to! mesh-index object pos)))
       (when-let [rot (:rotation object)]
         (object-rotate-to! mesh-index object rot)))))
