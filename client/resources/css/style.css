@@ -1,3 +1,7 @@
+.canvas-container {
+    height: 100%;
+}
+
 .footer {
     position: absolute;
     bottom: 0px;
@@ -10,6 +14,8 @@
 }
 
 .header {
+    position: absolute;
+    top: 0px;
     padding-left: 10px;
     width: 100%;
     background: #777;

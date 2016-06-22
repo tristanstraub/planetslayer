@@ -46,8 +46,9 @@
     [:div
      (controls (:keystate app))
      (header app)
-     (if (:webgl app)
-       (renderer-component :webgl (:webgl app)))
+     [:div.canvas-container
+      (if (:webgl app)
+        (renderer-component :webgl (:webgl app)))]
      (footer app)]))
 
 ;; App state -- globals? oh well...

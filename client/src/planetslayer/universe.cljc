@@ -69,7 +69,8 @@
                                   (cond-> p
                                     player
                                     (-> (assoc :pos (:pos player))
-                                        (assoc :pos-offset (v* -4 (v-norm dir)))
+                                        (assoc :pos-offset (v* -2 (v-norm dir)))
+                                        (assoc p :look-at (:pos player))
                                         (look-through-player player)))))
                       )
 
@@ -77,13 +78,14 @@
                       :tag :player
                       :transparent false
                       :opacity 0.5
-                      :pos [0 0 5]
+                      :pos [0 0 50]
                       :model "assets/baseship1.json" ;;"assets/ship.stl"
                       :scale [0.2 0.2 0.2]
-                      :rotate [0 0 0]
+                      :rotate [0 (/ Math/PI 2) 0]
                       ;; :material (material :image "images/spaceship1.jpg")
                       :update (fn [p time app time-delta]
-                                (let [time-delta (* 0.01 (/ time-delta 2.0))
+                                (let [rot-time-delta (* 0.01 (/ time-delta 16.0))
+                                      time-delta (* 0.01 (/ time-delta 2.0))
                                       player     (get-player app)
                                       dir        (get-dir player)]
 
@@ -98,10 +100,10 @@
                                     (update :pos #(v+v % (v* time-delta (v* -1 dir))))
 
                                     (get (:keys-state app) 68) ;; left - a
-                                    (update :rotate #(v+v % (v* time-delta [0 -1 0])))
+                                    (update :rotate #(v+v % (v* rot-time-delta [0 -1 0])))
 
                                     (get (:keys-state app) 65) ;; right - d
-                                    (update :rotate #(v+v % (v* time-delta [0 1 0])))
+                                    (update :rotate #(v+v % (v* rot-time-delta [0 1 0])))
 
                                     ;; (get (:keys-state app) 87) ;; up - w
                                     ;; (update :rotate #(v+v % (v* time-delta [0 0 1])))
@@ -111,11 +113,11 @@
 
                                     (get (:keys-state app) 69) ;; rot left - q
                                     ;; should rotate on the z-axis
-                                    (update :rotate #(v+v % (v* time-delta [0 0 1])))
+                                    (update :rotate #(v+v % (v* rot-time-delta [0 0 1])))
 
                                     (get (:keys-state app) 81) ;; rot right - e
                                     ;; should rotate on the z-axis
-                                    (update :rotate #(v+v % (v* time-delta [0 0 -1])))))))
+                                    (update :rotate #(v+v % (v* rot-time-delta [0 0 -1])))))))
 
              (object! :ship
                       :pos [2 -2 -1]

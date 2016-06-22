@@ -67,33 +67,33 @@
     (a/put! resources true)
 
     (a/go (let [new-mesh-index (reduce (fn [mesh-index object]
-                                     (let [texture (js/THREE.Texture.)
-                                           image   (-> object :material :image)
-                                           model   (-> object :model)]
+                                         (let [texture (js/THREE.Texture.)
+                                               image   (-> object :material :image)
+                                               model   (-> object :model)]
 
-                                       (when image
-                                         (a/put! resources true)
-                                         (a/put! unloaded-textures [texture image]))
+                                           (when image
+                                             (a/put! resources true)
+                                             (a/put! unloaded-textures [texture image]))
 
-                                       (cond (planet? object)
-                                             (assoc mesh-index
-                                                    (:id object)
-                                                    (add-sphere scene
-                                                                :pos (:pos object)
-                                                                :color (material-color (:material object))
-                                                                :radius (or (:radius object) 1)
-                                                                :texture texture))
+                                           (cond (planet? object)
+                                                 (assoc mesh-index
+                                                        (:id object)
+                                                        (add-sphere scene
+                                                                    :pos (:pos object)
+                                                                    :color (material-color (:material object))
+                                                                    :radius (or (:radius object) 1)
+                                                                    :texture texture))
 
-                                             model
-                                             (do
-                                               (a/put! resources true)
-                                               (a/put! unloaded-models [object model texture])
-                                               mesh-index)
+                                                 model
+                                                 (do
+                                                   (a/put! resources true)
+                                                   (a/put! unloaded-models [object model texture])
+                                                   mesh-index)
 
-                                             :else
-                                             mesh-index)))
-                                   {}
-                                   (u/objects universe))]
+                                                 :else
+                                                 mesh-index)))
+                                       {}
+                                       (u/objects universe))]
             (reset! mesh-index new-mesh-index))
 
 
@@ -120,40 +120,41 @@
                         (do
                           (println :load-stl model)
                           (.load stlloader model
-                                   (fn [geo]
-                                     (.computeFaceNormals geo)
-                                     (.computeVertexNormals geo)
+                                 (fn [geo]
+                                   (.computeFaceNormals geo)
+                                   (.computeVertexNormals geo)
 
-                                     (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0xffffff :map texture ;; :side js/THREE.DoubleSide
-                                                                                 })
-                                           mesh (js/THREE.Mesh. geo mat)]
-                                       (.add scene mesh)
+                                   (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0xffffff :map texture ;;  :side js/THREE.DoubleSide
+                                                                               })
+                                         mesh (js/THREE.Mesh. geo mat)]
+                                     (.add scene mesh)
 
-                                       (swap! mesh-index assoc (:id object) mesh)
+                                     (swap! mesh-index assoc (:id object) mesh)
 
-                                       (if-let [pos (:pos object)]
-                                         (threejs-move-to! mesh pos))
-                                       ;;
+                                     (if-let [pos (:pos object)]
+                                       (threejs-move-to! mesh pos))
+                                     ;;
 
-                                       (if-let [rotate (:rotate object)]
-                                         (mesh-rotate-to! mesh rotate))
+                                     (if-let [rotate (:rotate object)]
+                                       (mesh-rotate-to! mesh rotate))
 
-                                       (if-let [scale (:scale object)]
-                                         (mesh-scale-to! mesh scale))
+                                     (if-let [scale (:scale object)]
+                                       (mesh-scale-to! mesh scale))
 
-                                       (a/put! done true)
+                                     (a/put! done true)
 
-                                       ;; (.. object (traverse (fn [child]
-                                       ;;                        (when (= (type child) js/THREE.Mesh)
-                                       ;;                          (set! (.. child -material) mat)))))
-                                       )
-                                     )))
+                                     )
+                                   )))
                         (re-find #"[.]json" model)
                         (do
                           (println :load-json model)
 
                           (.load jsonloader model
                                  (fn [mesh]
+                                   (.. mesh (traverse (fn [child]
+                                                        (when (= (type child) js/THREE.Mesh)
+                                                          (set! (.. child -material -side) js/THREE.DoubleSide)))))
+
                                    (.add scene mesh)
 
                                    (swap! mesh-index assoc (:id object) mesh)

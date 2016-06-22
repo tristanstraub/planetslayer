@@ -42,8 +42,8 @@
 
 (defn rotation-matrix [[x y z]]
   (let [cx (Math/cos x) sx (Math/sin x)
-        cy (Math/cos y) sy (Math/sin y)
-        cz (Math/cos z) sz (Math/sin z)
+        cy (Math/cos (- y)) sy (Math/sin (- y))
+        cz (Math/cos (- z)) sz (Math/sin (- z))
         Ax [[1 0 0]
             [0 cx sx]
             [0 (- sx) cx]]
@@ -53,7 +53,7 @@
         Az [[cz sz 0]
             [(- sz) cz 0]
             [0 0 1]]]
-    (m*m (m*m Az Ay) Ax)))
+    (m*m (m*m Ax Ay) Az)))
 
 (defn m*v [a v]
   (let [n (count (first a))]
