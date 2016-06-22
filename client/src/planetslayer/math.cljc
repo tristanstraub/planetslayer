@@ -3,8 +3,22 @@
 (defn v*v [a b]
   (reduce + (map * a b)))
 
+
 ;; (defn zero-matrix [m]
 ;;   (mapv (fn [_] (into [] (take m (repeat 0)))) (range m)))
+
+(defn |v| [p1]
+  (Math/sqrt (v*v p1 p1)))
+
+
+(defn v+v [a b]
+  (mapv + a b))
+
+(defn v* [s b]
+  (mapv * (repeat s) b))
+
+(defn v-norm [a]
+  (v* (/ 1 (|v| a)) a))
 
 (defn identity-matrix [m]
   (mapv (fn [j] (mapv (fn [i] (if (= i j) 1 0)) (range m))) (range m)))

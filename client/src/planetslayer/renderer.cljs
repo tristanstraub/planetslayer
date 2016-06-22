@@ -2,6 +2,7 @@
   (:require [rum.core :as r]
             [planetslayer.anim :refer [request-animation-frame]]
             [planetslayer.scene :as s :refer [make-scene object-move-to! object-rotate-to!]]
+            [planetslayer.math :refer [v+v]]
             [planetslayer.universe :as u]))
 
 (defn init-threejs! []
@@ -38,9 +39,17 @@
         (when (not= :camera (:type object))
           (object-rotate-to! mesh-index object rot)))
 
+      (when-let [transparent (:transparent object)]
+        ;;:transparent true :opacity 0.5
+        (let [mesh (get mesh-index (:id object))]
+          (set! (.. mesh -material -transparent) true)
+          (set! (.. mesh -material -opacity) (or (:opacity object) 0.5))))
+
       (when (u/camera? object)
         (when-let [pos (:pos object)]
-          (s/threejs-move-to! camera pos))
+          (let [pos-offset (or (:pos-offset object) [0 0 0])
+                pos        (v+v pos pos-offset)]
+            (s/threejs-move-to! camera pos)))
 
         (when-let [look-at (:look-at object)]
           (s/camera-look-at camera look-at))))))
