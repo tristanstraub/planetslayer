@@ -16,8 +16,7 @@
   (.. mesh -position (set (pos 0) (pos 1) (pos 2))))
 
 (defn mesh-rotate-to! [mesh pos]
-  (when mesh
-    (.. mesh -rotation (set (pos 0) (pos 1) (pos 2)))))
+  (.. mesh -rotation (set (pos 0) (pos 1) (pos 2))))
 
 (defn mesh-scale-to! [mesh pos]
   (.. mesh -scale (set (pos 0) (pos 1) (pos 2))))
@@ -62,7 +61,10 @@
         unloaded-textures      (a/chan)
 
         mesh-index             (atom nil)
-        resources              (a/chan)]
+        resources              (a/chan)
+        done                   (a/chan)]
+
+    (a/put! resources true)
 
     (a/go (let [new-mesh-index (reduce (fn [mesh-index object]
                                      (let [texture (js/THREE.Texture.)
@@ -94,12 +96,13 @@
                                    (u/objects universe))]
             (reset! mesh-index new-mesh-index))
 
+
           (a/close! resources)
           (a/close! unloaded-textures)
-          (a/close! unloaded-models))
+          (a/close! unloaded-models)
+          (a/put! done true))
 
-    (let [done (a/chan)
-          out  (a/chan)]
+    (let [out  (a/chan)]
       (a/go (loop []
               (when-let [item (a/<! unloaded-textures)]
                 (let [[texture image-name] item]
@@ -157,7 +160,6 @@
 
                                    (if-let [pos (:pos object)]
                                      (threejs-move-to! mesh pos))
-                                   ;;
 
                                    (if-let [rotate (:rotate object)]
                                      (mesh-rotate-to! mesh rotate))
@@ -171,7 +173,8 @@
       (a/go
         (loop []
           (when (a/<! resources)
-            (a/<! done)))
+            (a/<! done)
+            (recur)))
 
         (threejs-move-to! camera [1 1 10])
         (camera-look-at camera [1 0 0])

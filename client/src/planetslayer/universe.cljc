@@ -69,7 +69,7 @@
                                   (cond-> p
                                     player
                                     (-> (assoc :pos (:pos player))
-                                        (assoc :pos-offset (v* -1 (v-norm dir)))
+                                        (assoc :pos-offset (v* -4 (v-norm dir)))
                                         (look-through-player player)))))
                       )
 
@@ -115,8 +115,8 @@
 
                                     (get (:keys-state app) 81) ;; rot right - e
                                     ;; should rotate on the z-axis
-                                    (update :rotate #(v+v % (v* time-delta [0 0 -1]))))))
-                      )
+                                    (update :rotate #(v+v % (v* time-delta [0 0 -1])))))))
+
              (object! :ship
                       :pos [2 -2 -1]
                       :model "assets/ship.stl"
@@ -133,7 +133,7 @@
                                                  ))))
              (object! :planet :pos [0 0 0]
                       :radius 1
-                      :material (material :image "images/spaceship1.jpg"
+                      :material (material :image "images/sun.jpg"
                                           :color 0xaaaaaa)
                       :update (fn [p time app time-delta]
                                 (assoc p :rotate [0 (/ time -8000) 0])))
