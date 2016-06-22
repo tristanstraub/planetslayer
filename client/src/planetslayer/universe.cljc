@@ -1,4 +1,5 @@
-(ns planetslayer.universe)
+(ns planetslayer.universe
+  (:require [planetslayer.math :refer [m*v identity-matrix rotation-matrix]]))
 
 (defn id! []
   (defonce ids (atom 0))
@@ -47,13 +48,15 @@
   (mapv * (repeat s) b))
 
 (defn get-dir [player]
-  (let [rot        (:rotate player)]
-    [(Math/sin (rot 1)) 0 (Math/cos (rot 1))]))
+  (m*v (rotation-matrix (:rotate player)) [1 0 0]))
+
+(defn threejs->vec [r]
+  [(.-x r) (.-y r) (.-z r)])
 
 (defn look-through-player [camera player]
-  ;;player-pos player-rotation player-right
-  (let [look-at (get-dir player)]
-    (assoc camera :look-at (v+ (:pos player) look-at))))
+  (let [v       (m*v (rotation-matrix (:rotate player)) [1 0 0])]
+    (assoc camera :look-at (v+ (:pos player) v))))
+
 
 (defn get-player [app]
   (first (filter (comp #(= % :player) :tag) (-> app :universe :objects))))
@@ -68,7 +71,8 @@
                                   (cond-> p
                                     player
                                     (-> (assoc :pos (:pos player))
-                                        (look-through-player player))))))
+                                        (look-through-player player)))))
+                      )
 
              (object! :ship
                       :tag :player
@@ -91,23 +95,25 @@
                                     (get (:keys-state app) 17) ;; ctrl
                                     (update :pos #(v+ % (v* time-delta (v* -1 dir))))
 
-                                    (get (:keys-state app) 65) ;; right - d
-                                    (update :pos #(v+ % (v* time-delta [-1 0 0])))
-
                                     (get (:keys-state app) 68) ;; left - a
-                                    (update :pos #(v+ % (v* time-delta [1 0 0])))
-
-                                    (get (:keys-state app) 87) ;; up - w
-                                    (update :pos #(v+ % (v* time-delta [0 1 0])))
-
-                                    (get (:keys-state app) 83) ;; down - s
-                                    (update :pos #(v+ % (v* time-delta [0 -1 0])))
-
-                                    (get (:keys-state app) 69) ;; rot left - q
                                     (update :rotate #(v+ % (v* time-delta [0 -1 0])))
 
+                                    (get (:keys-state app) 65) ;; right - d
+                                    (update :rotate #(v+ % (v* time-delta [0 1 0])))
+
+                                    ;; (get (:keys-state app) 87) ;; up - w
+                                    ;; (update :rotate #(v+ % (v* time-delta [0 0 1])))
+
+                                    ;; (get (:keys-state app) 83) ;; down - s
+                                    ;; (update :rotate #(v+ % (v* time-delta [-1 0 -1])))
+
+                                    (get (:keys-state app) 69) ;; rot left - q
+                                    ;; should rotate on the z-axis
+                                    (update :rotate #(v+ % (v* time-delta [0 0 1])))
+
                                     (get (:keys-state app) 81) ;; rot right - e
-                                    (update :rotate #(v+ % (v* time-delta [0 1 0]))))))
+                                    ;; should rotate on the z-axis
+                                    (update :rotate #(v+ % (v* time-delta [0 0 -1]))))))
                       )
              (object! :ship
                       :pos [2 -2 -1]
