@@ -42,7 +42,9 @@
   (= (:type object) :camera))
 
 (defn objects [universe]
-  (:objects universe))
+  (->> universe
+       (map second)
+       (apply concat)))
 
 (defn get-dir [player]
   (m*v (rotation-matrix (:rotate player)) [1 0 0]))
@@ -58,8 +60,27 @@
   (first (filter (comp #(= % :player) :tag) (-> app :universe :objects))))
 
 (defn make-universe []
-  {:objects [(object! :camera
-                      :pos [0 0 10]
+  {:toolbar [ ;; toolbar
+             (object! :camera
+                      :type :ortho
+                      :pos [0 0 5]
+                      :look-at [0 0 0])
+
+             ;; remaining
+
+             (object! :ship
+                      :pos [0 0 0]
+                      :model "assets/ship/cockpit-simple.json")
+
+             ]
+
+   :objects [
+
+
+             ;; remaining
+
+             (object! :camera
+                      :pos [0 0 5]
                       :look-at [0 0 0]
 
                       :update (fn [p time app time-delta]
@@ -78,7 +99,7 @@
                       :tag :player
                       :transparent false
                       :opacity 0.5
-                      :pos [0 0 50]
+                      :pos [0 0 10]
                       :model "assets/baseship1.json" ;;"assets/ship.stl"
                       :scale [0.2 0.2 0.2]
                       :rotate [0 (/ Math/PI 2) 0]

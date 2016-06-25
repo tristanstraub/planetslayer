@@ -23,6 +23,8 @@
     border-bottom: 1px solid #000;
 }
 
+
+
 .controls {
     width: 200px;
     border: 1px solid white;
@@ -30,6 +32,22 @@
     color: #fff;
     position: absolute;
     top: 30px;
+    left: 10px;
+    padding-right: 12px;
+    padding-bottom: 2px;
+    padding-left: 2px;
+
+}
+
+
+
+.todos {
+    width: 400px;
+    border: 1px solid white;
+    background: #777;
+    color: #fff;
+    position: absolute;
+    top: 80px;
     left: 10px;
     padding-right: 12px;
     padding-bottom: 2px;

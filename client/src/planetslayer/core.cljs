@@ -4,7 +4,7 @@
             [rum.core :as r]
             [goog.dom :as dom]
             [planetslayer.anim :refer [request-animation-frame]]
-            [planetslayer.scene :refer [make-scene]]
+            [planetslayer.scene :refer [make-scene-layer]]
             [planetslayer.renderer :refer [get-window-size renderer-component init-threejs! updater resizer]]
             [planetslayer.universe :refer [make-universe]]))
 
@@ -41,10 +41,21 @@
       [:div.col-xs-3 [:span.label (if (:s pressed) {:class "label-primary"}) "S"]]
       [:div.col-xs-3 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]]))
 
+(r/defc todos [app]
+  [:div.todos
+   [:h5 "TODO"]
+   [:ul
+    [:li "SHIP building"
+     [:ul.label-primary [:ul "Toolbar - part selection"
+                         [:div ".. requires orthographic camera"]]]]
+    [:li "Planet landings"]
+    ]])
+
 (r/defc root [app]
   (let [app @app]
     [:div
      (controls (:keystate app))
+     (todos)
      (header app)
      [:div.canvas-container
       (if (:webgl app)
@@ -122,13 +133,13 @@
         webgl                                   (init-threejs!)
         universe                                (make-universe)
         ;;---
-        scene-chan                              (make-scene (get-window-size) universe)]
+        scene-chan                              (make-scene-layer (get-window-size) (:objects universe))]
 
     (a/go (let [scene                       (a/<! scene-chan)
                 !universe                   (atom universe)
                 render!                     #(.render webgl (:scene scene) (:camera scene))
                 resize!                     (resizer webgl (:camera scene) render!)
-                update!                     (updater !universe scene)]
+                update!                     (updater (fn [] (:objects @!universe)) scene)]
 
             (.. js/window (addEventListener "keydown" key-down! false))
             (.. js/window (addEventListener "keyup" key-up! false))

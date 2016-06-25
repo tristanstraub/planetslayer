@@ -1,7 +1,7 @@
 (ns planetslayer.renderer
   (:require [rum.core :as r]
             [planetslayer.anim :refer [request-animation-frame]]
-            [planetslayer.scene :as s :refer [make-scene object-move-to! object-rotate-to!]]
+            [planetslayer.scene :as s :refer [object-move-to! object-rotate-to!]]
             [planetslayer.math :refer [v+v]]
             [planetslayer.universe :as u]))
 
@@ -29,9 +29,9 @@
     (resize-webgl! webgl)
     (render!)))
 
-(defn updater [!universe {:keys [scene camera mesh-index]}]
+(defn updater [layerf {:keys [scene camera mesh-index]}]
   (fn [time]
-    (doseq [object (:objects @!universe)]
+    (doseq [object (layerf)]
       (when-let [pos (:pos object)]
         (when (get mesh-index (:id object)) (object-move-to! mesh-index object pos)))
 

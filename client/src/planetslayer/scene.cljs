@@ -39,7 +39,105 @@
 (defn object-rotate-to! [mesh-index object pos]
   (mesh-rotate-to! (get mesh-index (:id object)) pos))
 
-(defn make-scene [window universe]
+(defn traverse-objects [layer scene & {:keys [load-texture load-model]}]
+  (->> layer
+       (reduce (fn [mesh-index object]
+                 (let [texture (js/THREE.Texture.)
+                       image   (-> object :material :image)
+                       model   (-> object :model)]
+
+                   (when image
+                     (load-texture [texture image]))
+
+                   (cond (planet? object)
+                         (assoc mesh-index
+                                (:id object)
+                                (add-sphere scene
+                                            :pos (:pos object)
+                                            :color (material-color (:material object))
+                                            :radius (or (:radius object) 1)
+                                            :texture texture))
+
+                         model
+                         (do
+                           (load-model [object model texture])
+                           mesh-index)
+
+                         :else
+                         mesh-index)))
+               {}))
+  )
+
+(defn load-textures [imgloader unloaded-textures done! resource-done!]
+  (a/go (loop []
+          (when-let [item (a/<! unloaded-textures)]
+            (let [[texture image-name] item]
+              (.load imgloader image-name
+                     (fn [image]
+                       (set! (.. texture -image) image)
+                       (set! (.. texture -needsUpdate) true)
+                       (resource-done!))))
+            (recur)))
+        (done!)))
+
+(defn load-models [scene mesh-index jsonloader stlloader unloaded-models done! resource-done!]
+  (a/go (loop []
+          (when-let [item (a/<! unloaded-models)]
+            (let [[object model texture] item]
+              (cond (re-find #"[.]stl" model)
+                    (do
+                      (println :load-stl model)
+                      (.load stlloader model
+                             (fn [geo]
+                               (.computeFaceNormals geo)
+                               (.computeVertexNormals geo)
+
+                               (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0xffffff :map texture ;;  :side js/THREE.DoubleSide
+                                                                           })
+                                     mesh (js/THREE.Mesh. geo mat)]
+                                 (.add scene mesh)
+
+                                 (swap! mesh-index assoc (:id object) mesh)
+
+                                 (if-let [pos (:pos object)]
+                                   (threejs-move-to! mesh pos))
+                                 ;;
+
+                                 (if-let [rotate (:rotate object)]
+                                   (mesh-rotate-to! mesh rotate))
+
+                                 (if-let [scale (:scale object)]
+                                   (mesh-scale-to! mesh scale))
+
+                                 (resource-done!)))))
+                    (re-find #"[.]json" model)
+                    (do
+                      (println :load-json model)
+
+                      (.load jsonloader model
+                             (fn [mesh]
+                               (.. mesh (traverse (fn [child]
+                                                    (when (= (type child) js/THREE.Mesh)
+                                                      (set! (.. child -material -side) js/THREE.DoubleSide)))))
+
+                               (.add scene mesh)
+
+                               (swap! mesh-index assoc (:id object) mesh)
+
+                               (if-let [pos (:pos object)]
+                                 (threejs-move-to! mesh pos))
+
+                               (if-let [rotate (:rotate object)]
+                                 (mesh-rotate-to! mesh rotate))
+
+                               (if-let [scale (:scale object)]
+                                 (mesh-scale-to! mesh scale))
+
+                               (resource-done!))))))
+            (recur))))
+  (done!))
+
+(defn make-scene-layer [window layer]
   (let [{:keys [width height]} window
         scene                  (js/THREE.Scene.)
         camera                 (js/THREE.PerspectiveCamera. 45 (/ width height) 0.1 1000)
@@ -61,129 +159,53 @@
         unloaded-textures      (a/chan)
 
         mesh-index             (atom nil)
+        done                   (a/chan)
         resources              (a/chan)
-        done                   (a/chan)]
+        resource-done!         (fn [] (a/put! done true))
+        start-async            (fn [f]
+                                 (a/put! resources true)
+                                 (f
+                                  (fn [] (a/put! done true))
+                                  resource-done!))
+        out                    (a/chan)]
 
-    (a/put! resources true)
+    (start-async
+     (fn [done! resource-done!]
+       (a/go (let [new-mesh-index (traverse-objects layer
+                                                    scene
+                                                    :resources resources
+                                                    :load-texture (fn [arg]
+                                                                    (a/put! resources true)
+                                                                    (a/put! unloaded-textures arg))
+                                                    :load-model (fn [arg]
+                                                                  (a/put! resources true)
+                                                                  (a/put! unloaded-models arg)))]
+               (reset! mesh-index new-mesh-index))
 
-    (a/go (let [new-mesh-index (reduce (fn [mesh-index object]
-                                         (let [texture (js/THREE.Texture.)
-                                               image   (-> object :material :image)
-                                               model   (-> object :model)]
+             (a/close! resources)
+             (a/close! unloaded-textures)
+             (a/close! unloaded-models)
+             (done!))))
 
-                                           (when image
-                                             (a/put! resources true)
-                                             (a/put! unloaded-textures [texture image]))
+    (start-async
+     (partial load-textures imgloader unloaded-textures))
 
-                                           (cond (planet? object)
-                                                 (assoc mesh-index
-                                                        (:id object)
-                                                        (add-sphere scene
-                                                                    :pos (:pos object)
-                                                                    :color (material-color (:material object))
-                                                                    :radius (or (:radius object) 1)
-                                                                    :texture texture))
+    (start-async
+     (partial load-models scene mesh-index jsonloader stlloader unloaded-models))
 
-                                                 model
-                                                 (do
-                                                   (a/put! resources true)
-                                                   (a/put! unloaded-models [object model texture])
-                                                   mesh-index)
+    (a/go
+      (loop []
+        (when (a/<! resources)
+          (a/<! done)
+          (recur)))
 
-                                                 :else
-                                                 mesh-index)))
-                                       {}
-                                       (u/objects universe))]
-            (reset! mesh-index new-mesh-index))
+      (threejs-move-to! camera [1 1 10])
+      (camera-look-at camera [1 0 0])
+      (threejs-move-to! dlight [-0.5 0 1])
 
+      (add-light scene light)
+      (add-light scene dlight)
 
-          (a/close! resources)
-          (a/close! unloaded-textures)
-          (a/close! unloaded-models)
-          (a/put! done true))
+      (a/put! out {:scene scene :camera camera :mesh-index @mesh-index}))
 
-    (let [out  (a/chan)]
-      (a/go (loop []
-              (when-let [item (a/<! unloaded-textures)]
-                (let [[texture image-name] item]
-                  (.load imgloader image-name
-                         (fn [image]
-                           (set! (.. texture -image) image)
-                           (set! (.. texture -needsUpdate) true)
-                           (a/put! done true))))
-                (recur))))
-
-      (a/go (loop []
-              (when-let [item (a/<! unloaded-models)]
-                (let [[object model texture] item]
-                  (cond (re-find #"[.]stl" model)
-                        (do
-                          (println :load-stl model)
-                          (.load stlloader model
-                                 (fn [geo]
-                                   (.computeFaceNormals geo)
-                                   (.computeVertexNormals geo)
-
-                                   (let [mat (js/THREE.MeshPhongMaterial. #js {:color 0xffffff :map texture ;;  :side js/THREE.DoubleSide
-                                                                               })
-                                         mesh (js/THREE.Mesh. geo mat)]
-                                     (.add scene mesh)
-
-                                     (swap! mesh-index assoc (:id object) mesh)
-
-                                     (if-let [pos (:pos object)]
-                                       (threejs-move-to! mesh pos))
-                                     ;;
-
-                                     (if-let [rotate (:rotate object)]
-                                       (mesh-rotate-to! mesh rotate))
-
-                                     (if-let [scale (:scale object)]
-                                       (mesh-scale-to! mesh scale))
-
-                                     (a/put! done true)
-
-                                     )
-                                   )))
-                        (re-find #"[.]json" model)
-                        (do
-                          (println :load-json model)
-
-                          (.load jsonloader model
-                                 (fn [mesh]
-                                   (.. mesh (traverse (fn [child]
-                                                        (when (= (type child) js/THREE.Mesh)
-                                                          (set! (.. child -material -side) js/THREE.DoubleSide)))))
-
-                                   (.add scene mesh)
-
-                                   (swap! mesh-index assoc (:id object) mesh)
-
-                                   (if-let [pos (:pos object)]
-                                     (threejs-move-to! mesh pos))
-
-                                   (if-let [rotate (:rotate object)]
-                                     (mesh-rotate-to! mesh rotate))
-
-                                   (if-let [scale (:scale object)]
-                                     (mesh-scale-to! mesh scale))
-
-                                   (a/put! done true))))))
-                (recur))))
-
-      (a/go
-        (loop []
-          (when (a/<! resources)
-            (a/<! done)
-            (recur)))
-
-        (threejs-move-to! camera [1 1 10])
-        (camera-look-at camera [1 0 0])
-        (threejs-move-to! dlight [-0.5 0 1])
-
-        (add-light scene light)
-        (add-light scene dlight)
-
-        (a/put! out {:scene scene :camera camera :mesh-index @mesh-index}))
-
-      out)))
+    out))
