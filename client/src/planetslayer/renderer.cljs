@@ -1,12 +1,14 @@
 (ns planetslayer.renderer
   (:require [rum.core :as r]
             [planetslayer.anim :refer [request-animation-frame]]
-            [planetslayer.scene :as s :refer [object-move-to! object-rotate-to!]]
+            [planetslayer.scene :as s :refer [object-move-to! object-rotate-to! object-scale-to!]]
             [planetslayer.math :refer [v+v]]
             [planetslayer.universe :as u]))
 
 (defn init-threejs! []
   (defonce *webgl* (js/THREE.WebGLRenderer.))
+  (.setClearColor *webgl* 0x000000 0xff)
+  (set! (.. *webgl* -autoClear) false)
   (.setPixelRatio *webgl* (.-devicePixelRatio js/window))
   *webgl*)
 
@@ -16,8 +18,16 @@
 
 (defn resize-camera! [camera]
   (let [{:keys [width height]} (get-window-size)]
-    (set! (.. camera -aspect) (/ width height))
-    (.updateProjectionMatrix camera)))
+    (case (.-type camera)
+      "PerspectiveCamera"
+      (do (set! (.. camera -aspect) (/ width height))
+          (.updateProjectionMatrix camera))
+
+      (do (set! (.. camera -left) -1)
+          (set! (.. camera -right) 1)
+          (set! (.. camera -top) (/ height width))
+          (set! (.. camera -bottom) (* (/ height width) -1))
+          (.updateProjectionMatrix camera)))))
 
 (defn resize-webgl! [webgl]
   (let [{:keys [width height]} (get-window-size)]
@@ -39,11 +49,17 @@
         (when (not= :camera (:type object))
           (object-rotate-to! mesh-index object rot)))
 
+      (when-let [scale (:scale object)]
+        (object-scale-to! mesh-index object scale))
+
       (when-let [transparent (:transparent object)]
         ;;:transparent true :opacity 0.5
+
         (let [mesh (get mesh-index (:id object))]
-          (set! (.. mesh -material -transparent) true)
-          (set! (.. mesh -material -opacity) (or (:opacity object) 0.5))))
+          (.. mesh (traverse (fn [child]
+                               (when (= (type child) js/THREE.Mesh)
+                                 (set! (.. child -material -transparent) true)
+                                 (set! (.. child -material -opacity) (or (:opacity object) 0.5))))))))
 
       (when (u/camera? object)
         (when-let [pos (:pos object)]

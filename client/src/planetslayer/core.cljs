@@ -91,9 +91,13 @@
     object))
 
 (defn update-universe [app keys-state]
-  (update-in app [:universe :objects]
-             (fn [objects]
-               (mapv (partial update-object (assoc app :keys-state keys-state)) objects))))
+  (-> app
+      (update-in [:universe :objects]
+                 (fn [objects]
+                   (mapv (partial update-object (assoc app :keys-state keys-state)) objects)))
+      (update-in [:universe :toolbar]
+                 (fn [objects]
+                   (mapv (partial update-object (assoc app :keys-state keys-state)) objects)))      ))
 
 (defn timed-app-updater [!app !keys-state]
   (fn [timestamp]
@@ -133,13 +137,19 @@
         webgl                                   (init-threejs!)
         universe                                (make-universe)
         ;;---
-        scene-chan                              (make-scene-layer (get-window-size) (:objects universe))]
+        scene-chan                              (make-scene-layer (get-window-size) (:objects universe))
+        toolbar-chan                            (make-scene-layer (get-window-size) (:toolbar universe))]
 
-    (a/go (let [scene                       (a/<! scene-chan)
-                !universe                   (atom universe)
-                render!                     #(.render webgl (:scene scene) (:camera scene))
-                resize!                     (resizer webgl (:camera scene) render!)
-                update!                     (updater (fn [] (:objects @!universe)) scene)]
+    (a/go (let [scene           (a/<! scene-chan)
+                toolbar-scene   (a/<! toolbar-chan)
+
+                !universe       (atom universe)
+
+                render!         #(.render webgl (:scene scene) (:camera scene))
+                render-toolbar! #(.render webgl (:scene toolbar-scene) (:camera toolbar-scene))
+                resize!         (resizer webgl (:camera scene) render!)
+                update!         (updater #(:objects @!universe) scene)
+                update-toolbar! (updater #(:toolbar @!universe) toolbar-scene)]
 
             (.. js/window (addEventListener "keydown" key-down! false))
             (.. js/window (addEventListener "keyup" key-up! false))
@@ -150,7 +160,10 @@
             (let [stop! (request-animation-frame (fn [time]
                                                    (reset! !universe (:universe @app))
                                                    (update! time)
-                                                   (render!)))]
+                                                   (update-toolbar! time)
+
+                                                   (render!)
+                                                   (render-toolbar!)))]
 
               (swap! app assoc
                      :version "0.0.1"

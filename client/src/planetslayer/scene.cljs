@@ -1,6 +1,6 @@
 (ns planetslayer.scene
   (:require-macros [cljs.core.async.macros :as a])
-  (:require [planetslayer.universe :as u :refer [material-color material-image planets planet?]]
+  (:require [planetslayer.universe :as u :refer [material-color material-image planets]]
             [cljs.core.async :as a]))
 
 (defn vec->threejs [v]
@@ -18,8 +18,15 @@
 (defn mesh-rotate-to! [mesh pos]
   (.. mesh -rotation (set (pos 0) (pos 1) (pos 2))))
 
+(defn zero-is-one [x]
+  (if (= x 0)
+    1
+    x))
+
 (defn mesh-scale-to! [mesh pos]
-  (.. mesh -scale (set (pos 0) (pos 1) (pos 2))))
+  (.. mesh -scale (set (zero-is-one (pos 0))
+                       (zero-is-one (pos 1))
+                       (zero-is-one (pos 2)))))
 
 (defn add-sphere [scene & {:keys [pos color radius texture]}]
   (let [mat    (js/THREE.MeshPhongMaterial. #js {:color (or color 0xff0000)
@@ -39,6 +46,9 @@
 (defn object-rotate-to! [mesh-index object pos]
   (mesh-rotate-to! (get mesh-index (:id object)) pos))
 
+(defn object-scale-to! [mesh-index object pos]
+  (mesh-scale-to! (get mesh-index (:id object)) pos))
+
 (defn traverse-objects [layer scene & {:keys [load-texture load-model]}]
   (->> layer
        (reduce (fn [mesh-index object]
@@ -49,7 +59,7 @@
                    (when image
                      (load-texture [texture image]))
 
-                   (cond (planet? object)
+                   (cond (u/planet? object)
                          (assoc mesh-index
                                 (:id object)
                                 (add-sphere scene
@@ -122,6 +132,7 @@
 
                                (.add scene mesh)
 
+                               (println :loaded-model (:type object) (:model object) (:id object))
                                (swap! mesh-index assoc (:id object) mesh)
 
                                (if-let [pos (:pos object)]
@@ -137,10 +148,17 @@
             (recur))))
   (done!))
 
+(defn make-camera [camera width height]
+  (println (:camera-type camera))
+  (case (:camera-type camera)
+    :ortho
+    (js/THREE.OrthographicCamera. -1 1 (/ height width) (* (/ height width) -1)  -500 1000)
+    (js/THREE.PerspectiveCamera. 45 (/ width height) 0.1 1000)))
+
 (defn make-scene-layer [window layer]
   (let [{:keys [width height]} window
         scene                  (js/THREE.Scene.)
-        camera                 (js/THREE.PerspectiveCamera. 45 (/ width height) 0.1 1000)
+        camera                 (make-camera (u/layer-get-camera layer) width height)
         light                  (js/THREE.AmbientLight. 0x999999)
         dlight                 (js/THREE.DirectionalLight. 0xbbbbbb)
 

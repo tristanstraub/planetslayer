@@ -6,9 +6,10 @@
   (defonce ids (atom 0))
   (swap! ids inc))
 
-(defn object! [type & {:keys [tag pos material update radius scale model rotate look-at transparent opacity]}]
+(defn object! [type & {:keys [tag pos material update radius scale model rotate look-at transparent opacity camera-type]}]
   {:id          (id!)
    :type        type
+   :camera-type camera-type
    :tag         tag
    :pos         pos
    :material    material
@@ -59,27 +60,74 @@
 (defn get-player [app]
   (first (filter (comp #(= % :player) :tag) (-> app :universe :objects))))
 
+(defn layer-get-camera [layer]
+  (->> layer
+       (filter (comp #(= % :camera) :type))
+       first))
+
 (defn make-universe []
   {:toolbar [ ;; toolbar
              (object! :camera
-                      :type :ortho
-                      :pos [0 0 5]
+                      :camera-type :ortho
+                      :pos [0 0 200]
                       :look-at [0 0 0])
 
              ;; remaining
+             ;; (object! :ship
+             ;;          :pos [0 -0.2 1]
+             ;;          :scale [0.1 0.1 1]
+             ;;          :transparent true
+             ;;          :opacity 0.5
+             ;;          :model "assets/ship/cockpit-simple.json"
+             ;;          :update (fn [p time app time-delta]
+             ;;                    (println :update-toolbar-ship)
+             ;;                    (assoc p :rotate [(/ time 100) 0 0])))
+
+             ;; (object! :ship
+             ;;          :pos [0.2 -0.2 1]
+             ;;          :scale [0.1 0.1 1]
+             ;;          :transparent true
+             ;;          :opacity 0.5
+             ;;          :model "assets/ship/cockpit-simple.json"
+             ;;          :update (fn [p time app time-delta]
+             ;;                    (println :update-toolbar-ship)
+             ;;                    (assoc p :rotate [(/ time 100) 0 0])))
+             (object! :ship
+                      :pos [0.2 -0.2 1]
+                      :scale [0.1 0.1 1]
+                      :transparent true
+                      :opacity 0.5
+                      :model "assets/ship/cockpit-simple.json"
+                      :update (fn [p time app time-delta]
+                                (-> p
+                                    (assoc :rotate [0 0 (/ time 100)])
+                                    (assoc :pos (v* 0.2 [(Math/cos (/ time 300))
+                                                         (* (Math/sin (/ time 300)) (/ 16 9)) 0])))))
 
              (object! :ship
-                      :pos [0 0 0]
-                      :model "assets/ship/cockpit-simple.json")
+                      :pos [0.2 -0.2 1]
+                      :scale [0.1 0.1 1]
+                      :transparent true
+                      :opacity 0.5
+                      :model "assets/ship/cockpit-simple.json"
+                      :update (fn [p time app time-delta]
+                                (-> p
+                                    (assoc :rotate [0 0 (/ time 100)])
+                                    (assoc :pos (v* 0.2 [(Math/cos (/ time -300))
+                                                         (* (Math/sin (/ time -300)) (/ 16 9)) 0])))))
 
-             ]
+             (object! :ship
+                      :pos [0 0 1]
+                      :scale [0.1 0.1 1]
+                      :transparent true
+                      :opacity 0.5
+                      :model "assets/ship/cockpit-simple.json"
+                      :update (fn [p time app time-delta]
+                                (-> p
+                                    (assoc :scale (v* (Math/sin (/ time 100)) [0.1 0.1 0.1]))
+)))]
 
-   :objects [
-
-
-             ;; remaining
-
-             (object! :camera
+   :objects [(object! :camera
                       :pos [0 0 5]
                       :look-at [0 0 0]
 
@@ -90,7 +138,8 @@
                                   (cond-> p
                                     player
                                     (-> (assoc :pos (:pos player))
-                                        (assoc :pos-offset (v* -2 (v-norm dir)))
+                                        (assoc :pos-offset (v* -4 (v-norm dir)))
+                                        (update :pos-offset v+v [0 2 0])
                                         (assoc p :look-at (:pos player))
                                         (look-through-player player)))))
                       )
@@ -140,20 +189,20 @@
                                     ;; should rotate on the z-axis
                                     (update :rotate #(v+v % (v* rot-time-delta [0 0 -1])))))))
 
-             (object! :ship
-                      :pos [2 -2 -1]
-                      :model "assets/ship.stl"
-                      :scale [0.1 0.1 0.1]
-                      :rotate [0 0 Math/PI]
-                      :update (fn [p time app time-delta]
-                                (assoc p
-                                       :pos (v+v [(* 3 (Math/sin (/ time 10000)))
-                                                  0
-                                                  (* 3 (Math/cos (/ time 10000)))]
-                                                 [(* 1 (Math/sin (/ time 10000)))
-                                                  0
-                                                  (* 1 (Math/cos (/ time 10000)))]
-                                                 ))))
+             ;; (object! :ship
+             ;;          :pos [2 -2 -1]
+             ;;          :model "assets/ship.stl"
+             ;;          :scale [0.1 0.1 0.1]
+             ;;          :rotate [0 0 Math/PI]
+             ;;          :update (fn [p time app time-delta]
+             ;;                    (assoc p
+             ;;                           :pos (v+v [(* 3 (Math/sin (/ time 10000)))
+             ;;                                      0
+             ;;                                      (* 3 (Math/cos (/ time 10000)))]
+             ;;                                     [(* 1 (Math/sin (/ time 10000)))
+             ;;                                      0
+             ;;                                      (* 1 (Math/cos (/ time 10000)))]
+             ;;                                     ))))
              (object! :planet :pos [0 0 0]
                       :radius 1
                       :material (material :image "images/sun.jpg"
