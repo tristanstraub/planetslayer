@@ -27,7 +27,10 @@
    :shift (get keystate 16)
    :ctrl  (get keystate 17)})
 
-(r/defc controls [keystate]
+(defn- yes-no [pressed]
+  (if pressed "yes" "no"))
+
+(r/defc controls [keystate controller]
   (let [pressed (get-pressed keystate)]
     [:div.controls
      [:div.row
@@ -39,22 +42,32 @@
       [:div.col-xs-3 [:span.label (if (:ctrl pressed) {:class "label-primary"}) "CTRL"]]
       [:div.col-xs-3 [:span.label (if (:a pressed) {:class "label-primary"}) "A"]]
       [:div.col-xs-3 [:span.label (if (:s pressed) {:class "label-primary"}) "S"]]
-      [:div.col-xs-3 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]]))
+      [:div.col-xs-3 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]
+     [:div.row
+      [:div.col-xs-3 [:span.label "Left joystick"]]
+      [:div.col-xs-3 (-> controller :left-joystick :horizontal)]]
+     [:div.row
+      [:div.col-xs-3 [:span.label "Left joystick"]]
+      [:div.col-xs-3 (-> controller :left-joystick :vertical)]]
+     (for [[i button] (map-indexed vector (-> controller :buttons))]
+       [:div.row
+        [:div.col-xs-3 [:span.label i]]
+        [:div.col-xs-3 (yes-no (:pressed button))]])]))
 
 (r/defc todos [app]
   [:div.todos
    [:h5 "TODO"]
    [:ul
     [:li "SHIP building"
-     [:ul.label-primary [:ul "Toolbar - part selection"
-                         [:div ".. requires orthographic camera"]]]]
+     [:ul.label-primary [:li "GAMEPAD integration"]]
+     [:ul ["Toolbar - part selection"]]]
     [:li "Planet landings"]
     ]])
 
 (r/defc root [app]
   (let [app @app]
     [:div
-     (controls (:keystate app))
+     (controls (:keystate app) (:controller app))
      (todos)
      (header app)
      [:div.canvas-container
@@ -110,7 +123,6 @@
                      (update-fps)
                      (update-universe @!keys-state))))))
 
-
 (defn key-listener []
   (let [!keys-state (atom {})
         debug false]
@@ -127,18 +139,47 @@
          (println (.-keyCode e) ))
        )}))
 
+(defn gamepad-button->clj [button]
+  {:pressed (.-pressed button)
+   :value (.-value button)})
+
+(defn gamepad-buttons [gamepad]
+  (let [buttons (.. gamepad -buttons)]
+    (->> (range (.-length buttons))
+         (mapv (fn [i] (gamepad-button->clj (aget buttons i)))))))
+
+(defn update-controller! [app]
+  (fn [time]
+    (let [controller (first (:controllers @app))]
+      (when controller
+        (let [gamepad (aget (.. js/navigator (getGamepads)) (:index controller))]
+          (when gamepad
+            (swap! app assoc :controller {:buttons       (gamepad-buttons gamepad)
+                                          :left-joystick {:horizontal (aget (.. gamepad -axes) 0)
+                                                          :vertical (aget (.. gamepad -axes) 1)}})))))))
+
 (defn main []
   (when-let [stop! (:stop! @app)]
     (stop!))
 
   (let [{:keys [!keys-state key-down! key-up!]} (key-listener)
         !app                                    app
+        gamepad-events                          (a/chan)
+        stop-controller!                   (request-animation-frame (update-controller! !app))
         stop-universe-update!                   (request-animation-frame (timed-app-updater !app !keys-state))
         webgl                                   (init-threejs!)
         universe                                (make-universe)
         ;;---
         scene-chan                              (make-scene-layer (get-window-size) (:objects universe))
-        toolbar-chan                            (make-scene-layer (get-window-size) (:toolbar universe))]
+        toolbar-chan                            (make-scene-layer (get-window-size) (:toolbar universe))
+        gamepad-connected!                      (fn [e]
+                                                  (.log js/console e)
+                                                  (swap! app update :controllers
+                                                         #(conj %
+                                                                {:index (.. e -gamepad -index)
+                                                                 :id (.. e -gamepad -id)
+                                                                 :buttons (.. e -gamepad -buttons -length)
+                                                                 :axes (.. e -gamepad -axes -length)})))]
 
     (a/go (let [scene           (a/<! scene-chan)
                 toolbar-scene   (a/<! toolbar-chan)
@@ -154,6 +195,7 @@
             (.. js/window (addEventListener "keydown" key-down! false))
             (.. js/window (addEventListener "keyup" key-up! false))
             (.. js/window (addEventListener "resize" resize! false))
+            (.. js/window (addEventListener "gamepadconnected" gamepad-connected! false))
 
             (resize!)
 
@@ -170,11 +212,13 @@
                      :universe universe
                      :webgl webgl
                      :stop! #(do
+                               (stop-controller!)
                                (stop-universe-update!)
                                (stop!)
                                (.. js/window (removeEventListener "keydown" key-down! false))
                                (.. js/window (removeEventListener "keyup" key-up! false))
-                               (.. js/window (removeEventListener "resize" resize!)))))))
+                               (.. js/window (removeEventListener "resize" resize!))
+                               (.. js/window (removeEventListener "gamepadconnected" gamepad-connected!)))))))
 
     (let [rcomponent (r/mount (root app) (dom/getElement "root"))]
       (add-watch !keys-state :keys-changes (fn [k r o n]

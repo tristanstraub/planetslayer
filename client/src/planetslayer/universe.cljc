@@ -70,7 +70,7 @@
              (object! :camera
                       :camera-type :ortho
                       :pos [0 0 200]
-                      :look-at [0 0 0])
+                      :look-at [-0.75 0 0])
 
              ;; remaining
              ;; (object! :ship
@@ -138,8 +138,8 @@
                                   (cond-> p
                                     player
                                     (-> (assoc :pos (:pos player))
-                                        (assoc :pos-offset (v* -4 (v-norm dir)))
-                                        (update :pos-offset v+v [0 2 0])
+                                        (assoc :pos-offset (v* -20 (v-norm dir)))
+                                        (update :pos-offset v+v [0 5 0])
                                         (assoc p :look-at (:pos player))
                                         (look-through-player player)))))
                       )
@@ -150,12 +150,12 @@
                       :opacity 0.5
                       :pos [0 0 10]
                       :model "assets/baseship1.json" ;;"assets/ship.stl"
-                      :scale [0.2 0.2 0.2]
+                      :scale [1 1 1]
                       :rotate [0 (/ Math/PI 2) 0]
                       ;; :material (material :image "images/spaceship1.jpg")
                       :update (fn [p time app time-delta]
                                 (let [rot-time-delta (* 0.01 (/ time-delta 16.0))
-                                      time-delta (* 0.01 (/ time-delta 2.0))
+                                      time-delta (* 0.1 (/ time-delta 2.0))
                                       player     (get-player app)
                                       dir        (get-dir player)]
 
@@ -203,17 +203,20 @@
              ;;                                      0
              ;;                                      (* 1 (Math/cos (/ time 10000)))]
              ;;                                     ))))
-             (object! :planet :pos [0 0 0]
-                      :radius 1
-                      :material (material :image "images/sun.jpg"
-                                          :color 0xaaaaaa)
-                      :update (fn [p time app time-delta]
-                                (assoc p :rotate [0 (/ time -8000) 0])))
-             (object! :planet :pos [3 0 -5]
+             ;; (object! :planet :pos [0 0 0]
+             ;;          :scale [100000 100000 100000]
+             ;;          :radius 1
+             ;;          :material (material :image "images/sun.jpg"
+             ;;                              :color 0xaaaaaa)
+             ;;          :update (fn [p time app time-delta]
+             ;;                    (assoc p :rotate [0 (/ time -8000) 0])))
+             (object! :planet :pos (v* -3000 [0 0 1])
+                      :scale (v* 5000 [1 1 1])
                       :radius 0.5
                       :material (material :image "images/burning-planet.jpg")
-                      :update (fn [p time app time-delta]
-                                (assoc p
-                                       :pos [(* 3 (Math/sin (/ time 10000)))
-                                             0
-                                             (* 3 (Math/cos (/ time 10000)))])))]})
+                      ;; :update (fn [p time app time-delta]
+                      ;;           (assoc p
+                      ;;                  :pos [(* 3 (Math/sin (/ time 10000)))
+                      ;;                        0
+                      ;;                        (+ 30000 (* 3 (Math/cos (/ time 10000))))]))
+                      )]})

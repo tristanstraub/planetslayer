@@ -31,7 +31,7 @@
 (defn add-sphere [scene & {:keys [pos color radius texture]}]
   (let [mat    (js/THREE.MeshPhongMaterial. #js {:color (or color 0xff0000)
                                                  :map texture})
-        geo    (js/THREE.SphereGeometry. radius 20 20)
+        geo    (js/THREE.SphereGeometry. radius 30 30)
         mesh   (js/THREE.Mesh. geo mat)]
 
     (threejs-move-to! mesh pos)
@@ -153,7 +153,7 @@
   (case (:camera-type camera)
     :ortho
     (js/THREE.OrthographicCamera. -1 1 (/ height width) (* (/ height width) -1)  -500 1000)
-    (js/THREE.PerspectiveCamera. 45 (/ width height) 0.1 1000)))
+    (js/THREE.PerspectiveCamera. 85 (/ width height) 0.1 1000)))
 
 (defn make-scene-layer [window layer]
   (let [{:keys [width height]} window
@@ -224,6 +224,7 @@
       (add-light scene light)
       (add-light scene dlight)
 
-      (a/put! out {:scene scene :camera camera :mesh-index @mesh-index}))
+      (a/put! out {:scene scene :camera camera :mesh-index @mesh-index})
+      (a/close! out))
 
     out))

@@ -26,7 +26,8 @@
 
 
 .controls {
-    width: 200px;
+    width: 400px;
+    height: 500px;
     border: 1px solid white;
     background: #777;
     color: #fff;
@@ -39,18 +40,15 @@
 
 }
 
-
-
 .todos {
     width: 400px;
     border: 1px solid white;
     background: #777;
     color: #fff;
     position: absolute;
-    top: 80px;
+    top: 580px;
     left: 10px;
     padding-right: 12px;
     padding-bottom: 2px;
     padding-left: 2px;
-
 }
