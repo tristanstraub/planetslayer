@@ -44,11 +44,11 @@
       [:div.col-xs-3 [:span.label (if (:s pressed) {:class "label-primary"}) "S"]]
       [:div.col-xs-3 [:span.label (if (:d pressed) {:class "label-primary"}) "D"]]]
      [:div.row
-      [:div.col-xs-3 [:span.label "Left joystick"]]
-      [:div.col-xs-3 (-> controller :left-joystick :horizontal)]]
+      [:div.col-xs-4 [:span.label "Left joystick - horizontal"]]
+      [:div.col-xs-4 (-> controller :left-joystick :horizontal)]]
      [:div.row
-      [:div.col-xs-3 [:span.label "Left joystick"]]
-      [:div.col-xs-3 (-> controller :left-joystick :vertical)]]
+      [:div.col-xs-4 [:span.label "Left joystick - vertical"]]
+      [:div.col-xs-4 (-> controller :left-joystick :vertical)]]
      (for [[i button] (map-indexed vector (-> controller :buttons))]
        [:div.row
         [:div.col-xs-3 [:span.label i]]
@@ -61,8 +61,7 @@
     [:li "SHIP building"
      [:ul.label-primary [:li "GAMEPAD integration"]]
      [:ul ["Toolbar - part selection"]]]
-    [:li "Planet landings"]
-    ]])
+    [:li "Planet landings"]]])
 
 (r/defc root [app]
   (let [app @app]
