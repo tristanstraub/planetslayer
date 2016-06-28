@@ -21,7 +21,8 @@
    :model       model
    :look-at     look-at
    :transparent transparent
-   :opacity     opacity})
+   :opacity     opacity
+   :velocity    [0 0 0]})
 
 (defn material [& {:keys [color image]}]
   {:color color

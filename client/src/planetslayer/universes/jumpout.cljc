@@ -1,7 +1,8 @@
 (ns planetslayer.universes.jumpout
   (:require [planetslayer.universe :refer [object! get-player get-dir look-through-player material]]
             [planetslayer.math :refer [m*v v+v v-norm v* ;; v^ v* v*v |v|
-                                       identity-matrix rotation-matrix]]))
+                                       identity-matrix rotation-matrix
+                                       sign]]))
 
 (defn- vindex [row]
   (map-indexed vector row))
@@ -38,10 +39,10 @@
         "xxxxxxxxxx  xxxxxxxx "
         "x      x "
         "x     x  "
-        "x     x "
+        "x     x   p"
         "x      x "
         "x        "
-        "x     p   "
+        "x        "
         "x        "
         "xx~~~xxxxxxxxxx "
         "         "]
@@ -73,9 +74,6 @@
     (update p :pos #(v+v % [0 -0.04 0]))
     p))
 
-(defn scale-axis [v]
-  (* 0.1 v))
-
 (defn intersects-with [player piece]
   ;; intersect parallel rectangles
   ;; |---|
@@ -103,39 +101,27 @@
                                         (< topa bottomb))]
     (not separate)))
 
-(defn update-player [p time app time-delta]
+(defn move-smooth-in-direction [player time app time-delta dir]
   (let [cell-width    0.3
-        player        (get-player app)
         player-rect   (select-keys player [:pos :scale])
         {:keys [j i]} (:attributes player)
         pieces        (->> app :universe :objects (map #(select-keys % [:pos :scale]))
                            (filter :pos)
-                           (filter :scale))]
+                           (filter :scale))
 
-
-
-    #_    (println :intersections (->> pieces
-                                       (filter #(intersects-with player %))
-                                       (filter #(not= % player-rect))))
+        dir-h         [(dir 0) 0 (dir 2)]
+        dir-v         [0 (dir 1) (dir 2)]]
 
     (let [{:keys [controller]} app
-          new-pos              (-> (:pos p)
-                                   ;; (v+v (v* cell-width [i (* -1 j) -1]))
-                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0]))
-                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0])))
+          new-pos              (-> (:pos player) (v+v dir-h) (v+v dir-v))
+          new-pos-h            (-> (:pos player) (v+v dir-h))
+          new-pos-v            (-> (:pos player) (v+v dir-v))
 
-          new-pos-h            (-> (:pos p)
-                                   ;; (v+v (v* cell-width [i (* -1 j) -1]))
-                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])))
-          new-pos-v            (-> (:pos p)
-                                   ;; (v+v (v* cell-width [i (* -1 j) -1]))
-                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0])))
+          new-player-rect      {:pos new-pos :scale (:scale player)}
+          new-player-rect-h    {:pos new-pos-h :scale (:scale player)}
+          new-player-rect-v    {:pos new-pos-v :scale (:scale player)}
 
-          new-player-rect      {:pos new-pos :scale (:scale p)}
-          new-player-rect-h    {:pos new-pos-h :scale (:scale p)}
-          new-player-rect-v    {:pos new-pos-v :scale (:scale p)}
-
-          old-player-rect      (select-keys p [:pos :scale])
+          old-player-rect      (select-keys player [:pos :scale])
 
           q-intersections      (->> pieces
                                     (filter #(intersects-with new-player-rect %))
@@ -150,20 +136,60 @@
                                     (filter #(not= % old-player-rect)))]
 
       (cond (empty? q-intersections)
-            (assoc p :pos new-pos)
+            (assoc player :pos new-pos)
 
             (empty? h-intersections)
-            (assoc p :pos new-pos-h)
+            (-> player
+                (assoc :pos new-pos-h)
+                (assoc-in [:velocity 1] 0))
 
             (empty? v-intersections)
-            (assoc p :pos new-pos-v)
+            (-> player
+                (assoc :pos new-pos-v)
+                (assoc-in [:velocity 0] 0))
 
             :else
-            p)
+            (assoc player :velocity [0 0 0])))))
 
-      ;; (player-falls app p)
+(defn update-player [player time app time-delta]
+  (let [{:keys [controller]} app
+        scale-axis           (fn [v] (* 0.0004 v))
+        max-v                (fn [x] (if (> (Math/abs x) 0.0003) (* (sign x) 0.0003) x))
+        ;; cap the player velocity at a maximum
+        max-travel           (fn [v] (mapv max-v v))
+        dampen-v             (fn [x k] (cond (> (Math/abs x) (* k 100))
+                                             x
 
-      )))
+                                             (> (Math/abs x) k)
+                                             (- x (* k (sign x)))
+
+                                             :else
+                                             0))
+        ;; dampen player movement
+        dampen               (fn [v k] [(dampen-v (v 0) k) (dampen-v (v 1) k) (v 2)])]
+
+    (-> player
+        (update :velocity
+                #(-> %
+                     (v+v (dampen (max-travel (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])
+                                                   (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -10 0])))
+                                  0.00001))
+                     (dampen 0.0001)))
+        ;; gravity
+        (update :velocity v+v [0 (* time-delta -0.00001) 0])
+
+        ;; apply velocity
+        (as-> player
+            (move-smooth-in-direction player time app time-delta (v* time-delta (:velocity player))
+                                      ))
+        ;; (move-smooth-in-direction time app time-delta [0 (* time-delta -0.005) 0])
+        ;; (move-smooth-in-direction time app time-delta
+        ;;                           (-> (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])
+        ;;                               (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0]))))
+
+        ;; gravity -- IDEA: could be attractive to only certain blocks
+        )))
+
 
 (defn objectify-world! [rows]
   (let [cell-width    0.3

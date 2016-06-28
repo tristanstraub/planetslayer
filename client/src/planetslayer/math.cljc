@@ -221,10 +221,12 @@
 ;;      (<= (abs-angle-between (angle-to p1 p2) angle)
 ;;          error)))
 
-;; (defn sign [a]
-;;   (if (< 0 a)
-;;     1
-;;     -1))
+(defn sign [a]
+  (if (= 0 a)
+    0
+    (if (< 0 a)
+      1
+      -1)))
 
 ;; (defn sin [a]
 ;;   (Math/sin a))
