@@ -124,15 +124,40 @@
                                    (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0]))
                                    (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0])))
 
+          new-pos-h            (-> (:pos p)
+                                   ;; (v+v (v* cell-width [i (* -1 j) -1]))
+                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])))
+          new-pos-v            (-> (:pos p)
+                                   ;; (v+v (v* cell-width [i (* -1 j) -1]))
+                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0])))
+
           new-player-rect      {:pos new-pos :scale (:scale p)}
+          new-player-rect-h    {:pos new-pos-h :scale (:scale p)}
+          new-player-rect-v    {:pos new-pos-v :scale (:scale p)}
+
           old-player-rect      (select-keys p [:pos :scale])
-          intersections        (->> pieces
+
+          q-intersections      (->> pieces
                                     (filter #(intersects-with new-player-rect %))
+                                    (filter #(not= % old-player-rect)))
+
+          h-intersections      (->> pieces
+                                    (filter #(intersects-with new-player-rect-h %))
+                                    (filter #(not= % old-player-rect)))
+
+          v-intersections      (->> pieces
+                                    (filter #(intersects-with new-player-rect-v %))
                                     (filter #(not= % old-player-rect)))]
 
-      (println :intersections intersections new-player-rect)
-      (cond (empty? intersections)
+      (cond (empty? q-intersections)
             (assoc p :pos new-pos)
+
+            (empty? h-intersections)
+            (assoc p :pos new-pos-h)
+
+            (empty? v-intersections)
+            (assoc p :pos new-pos-v)
+
             :else
             p)
 
