@@ -6,7 +6,9 @@
             [planetslayer.anim :refer [request-animation-frame]]
             [planetslayer.scene :refer [make-scene-layer]]
             [planetslayer.renderer :refer [get-window-size renderer-component init-threejs! updater resizer]]
-            [planetslayer.universe :refer [make-universe]]))
+            [planetslayer.universes.planetslayer :as planetslayer]
+            [planetslayer.universes.jumpout :as jumpout]
+            [planetslayer.tests :refer [testbox]]))
 
 (enable-console-print!)
 
@@ -50,29 +52,47 @@
       [:div.col-xs-4 [:span.label "Left joystick - vertical"]]
       [:div.col-xs-4 (-> controller :left-joystick :vertical)]]
      (for [[i button] (map-indexed vector (-> controller :buttons))]
-       [:div.row
+       [:div.row {:key i}
         [:div.col-xs-3 [:span.label i]]
         [:div.col-xs-3 (yes-no (:pressed button))]])]))
 
 (r/defc todos [app]
   [:div.todos
-   [:h5 "TODO"]
+   [:h5 "Now working on... random platformer"]
    [:ul
-    [:li "SHIP building"
-     [:ul.label-primary [:li "GAMEPAD integration"]]
-     [:ul ["Toolbar - part selection"]]]
-    [:li "Planet landings"]]])
+    [:li "room"]
+    [:li "player"]]
+   [:h5 "On hold..."
+    [:div [:h6 "planetslayer - spacetrader"]
+     [:ul
+      [:li.label-primary "Pivoting to platformer for variety"]
+      [:li "SHIP building"
+       [:ul ["Toolbar - part selection"]]
+       [:ul [:li "DONE - GAMEPAD integration"]]]
+      [:li "Planet landings"]]]]])
 
 (r/defc root [app]
   (let [app @app]
     [:div
      (controls (:keystate app) (:controller app))
-     (todos)
+     ;; (todos)
+     (testbox)
      (header app)
      [:div.canvas-container
       (if (:webgl app)
         (renderer-component :webgl (:webgl app)))]
      (footer app)]))
+
+;; (r/defc root [app]
+;;   (let [app @app]
+;;     [:div
+;;      (controls (:keystate app) (:controller app))
+;;      (todos)
+;;      (header app)
+;;      [:div.canvas-container
+;;       (if (:webgl app)
+;;         (renderer-component :webgl (:webgl app)))]
+;;      (footer app)]))
 
 ;; App state -- globals? oh well...
 (defonce app (atom {}))
@@ -150,12 +170,13 @@
 (defn update-controller! [app]
   (fn [time]
     (let [controller (first (:controllers @app))]
-      (when controller
-        (let [gamepad (aget (.. js/navigator (getGamepads)) (:index controller))]
-          (when gamepad
-            (swap! app assoc :controller {:buttons       (gamepad-buttons gamepad)
-                                          :left-joystick {:horizontal (aget (.. gamepad -axes) 0)
-                                                          :vertical (aget (.. gamepad -axes) 1)}})))))))
+      (let [gamepad (if controller (aget (.. js/navigator (getGamepads)) (:index controller))
+                        ;; TODO fix this hack, when the controller hasn't been reconnected
+                        (aget (.. js/navigator (getGamepads)) 1))]
+        (when gamepad
+          (swap! app assoc :controller {:buttons       (gamepad-buttons gamepad)
+                                        :left-joystick {:horizontal (aget (.. gamepad -axes) 0)
+                                                        :vertical (aget (.. gamepad -axes) 1)}}))))))
 
 (defn main []
   (when-let [stop! (:stop! @app)]
@@ -164,10 +185,10 @@
   (let [{:keys [!keys-state key-down! key-up!]} (key-listener)
         !app                                    app
         gamepad-events                          (a/chan)
-        stop-controller!                   (request-animation-frame (update-controller! !app))
+        stop-controller!                        (request-animation-frame (update-controller! !app))
         stop-universe-update!                   (request-animation-frame (timed-app-updater !app !keys-state))
         webgl                                   (init-threejs!)
-        universe                                (make-universe)
+        universe                                (jumpout/make-universe)
         ;;---
         scene-chan                              (make-scene-layer (get-window-size) (:objects universe))
         toolbar-chan                            (make-scene-layer (get-window-size) (:toolbar universe))

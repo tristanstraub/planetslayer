@@ -61,6 +61,14 @@
                                  (set! (.. child -material -transparent) true)
                                  (set! (.. child -material -opacity) (or (:opacity object) 0.5))))))))
 
+
+      (when-let [pos (:pos object)]
+        (let [pos-offset (or (:pos-offset object) [0 0 0])
+              pos        (v+v pos pos-offset)
+              mesh (get mesh-index (:id object))]
+          (when mesh
+            (s/threejs-move-to! mesh pos))))
+
       (when (u/camera? object)
         (when-let [pos (:pos object)]
           (let [pos-offset (or (:pos-offset object) [0 0 0])

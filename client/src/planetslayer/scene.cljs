@@ -1,6 +1,8 @@
 (ns planetslayer.scene
   (:require-macros [cljs.core.async.macros :as a])
   (:require [planetslayer.universe :as u :refer [material-color material-image planets]]
+            [planetslayer.math :refer [m*v v+v v-norm v* ;; v^ v* v*v |v|
+                                       identity-matrix rotation-matrix]]
             [cljs.core.async :as a]))
 
 (defn vec->threejs [v]
@@ -40,6 +42,18 @@
 
     mesh))
 
+(defn add-plane [scene & {:keys [pos color]}]
+  (let [mat    (js/THREE.MeshBasicMaterial. #js {:color (or color 0xffffff)})
+        geo    (js/THREE.PlaneGeometry. 1 1 1 1)
+        mesh   (js/THREE.Mesh. geo mat)]
+
+    (threejs-move-to! mesh pos)
+
+    (.add scene mesh)
+    (println :addedplace)
+
+    mesh))
+
 (defn object-move-to! [mesh-index object pos]
   (threejs-move-to! (get mesh-index (:id object)) pos))
 
@@ -67,6 +81,10 @@
                                             :color (material-color (:material object))
                                             :radius (or (:radius object) 1)
                                             :texture texture))
+
+                         (= :mesh (:type object))
+                         (assoc mesh-index (:id object) (add-plane scene :pos (:pos object)
+                                                                   :color (-> object :material :color)))
 
                          model
                          (do
@@ -110,7 +128,8 @@
                                  (swap! mesh-index assoc (:id object) mesh)
 
                                  (if-let [pos (:pos object)]
-                                   (threejs-move-to! mesh pos))
+                                   (threejs-move-to! mesh (v+v pos (or (:pos-offset object)
+                                                                       [0 0 0]))))
                                  ;;
 
                                  (if-let [rotate (:rotate object)]
