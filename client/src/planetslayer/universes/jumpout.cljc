@@ -38,12 +38,12 @@
         "x        "
         "xxxxxxxxxx  xxxxxxxx "
         "x      x "
-        "x     x  "
-        "x     x   p"
-        "x      x "
-        "x        "
-        "x        "
-        "x        "
+        "x     x                 xxxx"
+        "x     x   p                     "
+        "x      x            xxxxxxxxxxxx"
+        "x               xxx"
+        "x            xxx"
+        "x          xx"
         "xx~~~xxxxxxxxxx "
         "         "]
        (mapv #(into [] %))))
@@ -168,7 +168,7 @@
 (defn update-player [player time app time-delta]
   (let [{:keys [controller]} app
         scale-axis           (fn [v] (* 0.0004 v))
-        max-v                (fn [x] (if (> (Math/abs x) 0.0003) (* (sign x) 0.0003) x))
+        max-v                (fn [x] (if (> (Math/abs x) 0.0001) (* (sign x) 0.0001) x))
         ;; cap the player velocity at a maximum
         max-travel           (fn [v] (mapv max-v v))
         dampen-v             (fn [x k] (cond (> (Math/abs x) (* k 100))
@@ -182,11 +182,10 @@
         ;; dampen player movement
         dampen               (fn [v k] [(dampen-v (v 0) k) (dampen-v (v 1) k) (v 2)])]
 
-
-    (println (can-move-in-direction?  player app [0 -0.01 0]))
-
     (-> player
-        ;; button-jump
+
+;;; -------- JUMP --------
+
         (cond->
             (and (get-in controller [:buttons 0 :pressed])
                  (or (nil? (:unpressed player))
@@ -194,7 +193,7 @@
                  ;; vertical velocity is almost zero
                  (and (< (Math/abs ((:velocity player) 1)) 0.001)
                       (not (can-move-in-direction?  player app [0 -0.01 0]))))
-            (-> (update :velocity v+v [0 0.002 0])
+            (-> (update :velocity v+v [0 0.006 0])
                 ;; disable flying
                 (assoc :unpressed false))
 
@@ -202,12 +201,12 @@
             (and (not (get-in controller [:buttons 0 :pressed])))
             (assoc :unpressed true))
 
+;;; -------- HORIZONTAL RUNNING ------
+
         (update :velocity
                 #(-> %
-                     (v+v (dampen (max-travel (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])
-                                              ;; (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -10 0])
-                                              )
-                                  0.00001))
+                     (v+v (-> (max-travel (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0]))
+                              (dampen 0.00001)))
                      #_(dampen 0.0001)))
         ;; left-joystick movement
         (update :velocity
