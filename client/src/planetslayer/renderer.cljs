@@ -39,6 +39,7 @@
     (resize-webgl! webgl)
     (render!)))
 
+;; TODO move this to renderer?
 (defn updater [layerf {:keys [scene camera mesh-index]}]
   (fn [time]
     (doseq [object (layerf)]
@@ -61,6 +62,9 @@
                                  (set! (.. child -material -transparent) true)
                                  (set! (.. child -material -opacity) (or (:opacity object) 0.5))))))))
 
+
+      (when-let [color (get-in object [:material :color])]
+        (.. (get mesh-index (:id object)) -material -color (setHex color)))
 
       (when-let [pos (:pos object)]
         (let [pos-offset (or (:pos-offset object) [0 0 0])

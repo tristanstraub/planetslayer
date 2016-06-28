@@ -93,8 +93,7 @@
 
                          :else
                          mesh-index)))
-               {}))
-  )
+               {})))
 
 (defn load-textures [imgloader unloaded-textures done! resource-done!]
   (a/go (loop []
@@ -126,6 +125,7 @@
                                  (.add scene mesh)
 
                                  (swap! mesh-index assoc (:id object) mesh)
+
 
                                  (if-let [pos (:pos object)]
                                    (threejs-move-to! mesh (v+v pos (or (:pos-offset object)

@@ -114,9 +114,9 @@
                            (filter :pos)
                            (filter :scale))]
 
-    (println :intersections (->> pieces
-                                 (filter #(intersects-with player %))
-                                 (filter #(not= % player-rect))))
+    ;; (println :intersections (->> pieces
+    ;;                              (filter #(intersects-with player %))
+    ;;                              (filter #(not= % player-rect))))
 
     (let [{:keys [controller]} app]
       (-> p
@@ -155,7 +155,10 @@
                                         :pos (v* cell-width [i (* -1 j) -1])
                                         :update (fn [p time app time-delta]
                                                   ;; (assoc p :pos-offset (v* (* 0.01 (Math/random)) [1 1 1]))
-                                                  p
+                                                  (assoc-in p [:material :color]
+                                                            (if (intersects-with p (get-player app))
+                                                              0xff0000
+                                                              0x0000ff))
                                                   )
                                         )
                             \p (object! :mesh
