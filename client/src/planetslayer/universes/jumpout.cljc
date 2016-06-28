@@ -41,13 +41,11 @@
         "x     x "
         "x      x "
         "x        "
-        "x        "
         "x     p   "
+        "x        "
         "xx~~~xxxxxxxxxx "
         "         "]
        (mapv #(into [] %))))
-
-
 
 (defn- player-boundary-cells [world player]
   (let [cell-width    0.3
@@ -114,16 +112,30 @@
                            (filter :pos)
                            (filter :scale))]
 
-    ;; (println :intersections (->> pieces
-    ;;                              (filter #(intersects-with player %))
-    ;;                              (filter #(not= % player-rect))))
 
-    (let [{:keys [controller]} app]
-      (-> p
-          (update :pos #(-> %
-                            ;; (v+v (v* cell-width [i (* -1 j) -1]))
-                            (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0]))
-                            (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0])))))
+
+    #_    (println :intersections (->> pieces
+                                       (filter #(intersects-with player %))
+                                       (filter #(not= % player-rect))))
+
+    (let [{:keys [controller]} app
+          new-pos              (-> (:pos p)
+                                   ;; (v+v (v* cell-width [i (* -1 j) -1]))
+                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0]))
+                                   (v+v (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -1 0])))
+
+          new-player-rect      {:pos new-pos :scale (:scale p)}
+          old-player-rect      (select-keys p [:pos :scale])
+          intersections        (->> pieces
+                                    (filter #(intersects-with new-player-rect %))
+                                    (filter #(not= % old-player-rect)))]
+
+      (println :intersections intersections new-player-rect)
+      (cond (empty? intersections)
+            (assoc p :pos new-pos)
+            :else
+            p)
+
       ;; (player-falls app p)
 
       )))
