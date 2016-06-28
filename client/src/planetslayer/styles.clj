@@ -56,7 +56,7 @@
   [:.controls {
                :overflow "scroll"
                :width "400px"
-               :height "200px"
+               :height (px 500)
                :border "1px solid white"
                :background "#777"
                :color "#fff"

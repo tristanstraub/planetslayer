@@ -101,7 +101,21 @@
                                         (< topa bottomb))]
     (not separate)))
 
+(defn can-move-in-direction? [player app dir]
+  (let [new-pos         (-> (:pos player) (v+v dir))
+        new-player-rect {:pos new-pos :scale (:scale player)}
+        old-player-rect (select-keys player [:pos :scale])
+        pieces        (->> app :universe :objects (map #(select-keys % [:pos :scale]))
+                           (filter :pos)
+                           (filter :scale))
+        intersections   (->> pieces
+                             (filter #(intersects-with new-player-rect %))
+                             (filter #(not= % old-player-rect)))]
+    (empty? intersections)))
+
 (defn move-smooth-in-direction [player time app time-delta dir]
+  ;; TODO prevent falling through close objects (limit time-delta or make it always the same
+  ;;      size)
   (let [cell-width    0.3
         player-rect   (select-keys player [:pos :scale])
         {:keys [j i]} (:attributes player)
@@ -168,11 +182,39 @@
         ;; dampen player movement
         dampen               (fn [v k] [(dampen-v (v 0) k) (dampen-v (v 1) k) (v 2)])]
 
+
+    (println (can-move-in-direction?  player app [0 -0.01 0]))
+
     (-> player
+        ;; button-jump
+        (cond->
+            (and (get-in controller [:buttons 0 :pressed])
+                 (or (nil? (:unpressed player))
+                     (= (:unpressed player) true))
+                 ;; vertical velocity is almost zero
+                 (and (< (Math/abs ((:velocity player) 1)) 0.001)
+                      (not (can-move-in-direction?  player app [0 -0.01 0]))))
+            (-> (update :velocity v+v [0 0.002 0])
+                ;; disable flying
+                (assoc :unpressed false))
+
+            ;; reenable jump
+            (and (not (get-in controller [:buttons 0 :pressed])))
+            (assoc :unpressed true))
+
         (update :velocity
                 #(-> %
-                     (v+v (dampen (max-travel (v+v (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])
-                                                   (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -10 0])))
+                     (v+v (dampen (max-travel (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])
+                                              ;; (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -10 0])
+                                              )
+                                  0.00001))
+                     #_(dampen 0.0001)))
+        ;; left-joystick movement
+        (update :velocity
+                #(-> %
+                     (v+v (dampen (max-travel (v* (scale-axis (or (-> controller :left-joystick :horizontal) 0)) [1 0 0])
+                                              ;; (v* (scale-axis (or (-> controller :left-joystick :vertical) 0)) [0 -10 0])
+                                              )
                                   0.00001))
                      (dampen 0.0001)))
         ;; gravity
