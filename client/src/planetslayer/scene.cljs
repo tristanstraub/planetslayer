@@ -43,6 +43,7 @@
     mesh))
 
 (defn add-plane [scene & {:keys [pos color]}]
+  (println :add-plane)
   (let [mat    (js/THREE.MeshBasicMaterial. #js {:color (or color 0xffffff)})
         geo    (js/THREE.PlaneGeometry. 1 1 1 1)
         mesh   (js/THREE.Mesh. geo mat)]

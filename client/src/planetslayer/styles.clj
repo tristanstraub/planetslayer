@@ -69,13 +69,15 @@
 
                }]
   [:.todos {
+            :bottom (px 30)
+            :right (px 30)
+            :z-index 10
+
             :width (px 400)
             :border "1px solid white"
             :background "#777"
             :color "#fff"
             :position "absolute"
-            :top (px 280)
-            :left "10px"
             :padding-right "12px"
             :padding-bottom "2px"
             :padding-left "2px"

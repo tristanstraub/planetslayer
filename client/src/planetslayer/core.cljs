@@ -56,12 +56,14 @@
         [:div.col-xs-3 [:span.label i]]
         [:div.col-xs-3 (yes-no (:pressed button))]])]))
 
-(r/defc todos [app]
+(r/defc platformer-todos [app]
   [:div.todos
-   [:h5 "Now working on... random platformer"]
+   [:h3 "TODO"]
    [:ul
-    [:li "room"]
-    [:li "player"]]
+    [:li "Background layer"]]])
+
+(r/defc spacetrader-todos [app]
+  [:div.todos
    [:h5 "On hold..."
     [:div [:h6 "planetslayer - spacetrader"]
      [:ul
@@ -75,7 +77,7 @@
   (let [app @app]
     [:div
      (controls (:keystate app) (:controller app))
-     ;; (todos)
+     (platformer-todos)
      (testbox)
      (header app)
      [:div.canvas-container
@@ -87,7 +89,7 @@
 ;;   (let [app @app]
 ;;     [:div
 ;;      (controls (:keystate app) (:controller app))
-;;      (todos)
+;;      (platformer-todos)
 ;;      (header app)
 ;;      [:div.canvas-container
 ;;       (if (:webgl app)
