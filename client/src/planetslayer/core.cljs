@@ -60,7 +60,9 @@
   [:div.todos
    [:h3 "TODO"]
    [:ul
-    [:li "Background layer"]]])
+    [:li "Background layer"]
+    [:li "Textures?"]
+    [:li "Elevators! "]]])
 
 (r/defc spacetrader-todos [app]
   [:div.todos
@@ -133,16 +135,23 @@
                  (fn [objects]
                    (mapv (partial update-object (assoc app :keys-state keys-state)) objects)))      ))
 
+
+(defn clamp-difference [dst src max]
+  (let [diff (- dst src)]
+    (if (> diff max)
+      (+ src diff)
+      dst)))
+
 (defn timed-app-updater [!app !keys-state]
   (fn [timestamp]
     (swap! !app (fn [app]
-                 (-> app
-                     (update :start-timestamp #(or % timestamp))
-                     (update :frames inc)
-                     (assoc :previous-timestamp (:timestamp app))
-                     (assoc :timestamp timestamp)
-                     (update-fps)
-                     (update-universe @!keys-state))))))
+                  (-> app
+                      (update :start-timestamp #(or % timestamp))
+                      (update :frames inc)
+                      (assoc :previous-timestamp (:timestamp app))
+                      (assoc :timestamp timestamp)
+                      (update-fps)
+                      (update-universe @!keys-state))))))
 
 (defn key-listener []
   (let [!keys-state (atom {})
@@ -189,6 +198,8 @@
         gamepad-events                          (a/chan)
         stop-controller!                        (request-animation-frame (update-controller! !app))
         stop-universe-update!                   (request-animation-frame (timed-app-updater !app !keys-state))
+
+        ;; stop-universe-update!                   (fn [])
         webgl                                   (init-threejs!)
         universe                                (jumpout/make-universe)
         ;;---
